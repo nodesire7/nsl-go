@@ -59,12 +59,6 @@ func (s *LinkService) GetAvailableCodeLength() (int, error) {
 		maxLength = config.AppConfig.MaxCodeLength
 	}
 	
-	// 获取当前使用的最大长度
-	currentMax, err := database.GetCurrentMaxCodeLength()
-	if err != nil {
-		return minLength, err
-	}
-	
 	// 从最小长度开始检查
 	for length := minLength; length <= maxLength; length++ {
 		count, err := database.GetCodeCountByLength(length)

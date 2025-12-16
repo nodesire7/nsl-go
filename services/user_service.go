@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"short-link/database"
 	"short-link/models"
-	"short-link/utils"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
