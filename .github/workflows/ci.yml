@@ -25,6 +25,7 @@ jobs:
     
     - name: Build Go binary
       run: |
+        go mod tidy
         go mod download
         go build -o nsl-go -ldflags="-s -w" ./cmd/server
     
@@ -92,6 +93,8 @@ jobs:
     
     - name: Build binaries for multiple platforms
       run: |
+        go mod tidy
+        go mod download
         # Linux AMD64
         GOOS=linux GOARCH=amd64 go build -o nsl-go-linux-amd64 -ldflags="-s -w" ./cmd/server
         
