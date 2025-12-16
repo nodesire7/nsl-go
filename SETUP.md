@@ -42,23 +42,58 @@
 
 **常见问题排查**：
 
-如果遇到 "push access denied" 或 "repository does not exist" 错误：
+如果遇到 "push access denied" 或 "repository does not exist" 或 "insufficient_scope" 错误：
 
-1. ✅ **确认仓库已创建**
-   - 访问：https://hub.docker.com/r/nodesire7/nsl-go
-   - 如果显示404，说明仓库不存在，需要先创建
+### 步骤 1: 确认仓库已创建 ⭐ 最重要
 
-2. ✅ **确认Token权限**
-   - 重新检查Token权限，必须包含 Write 权限
-   - 如果权限不足，删除旧Token，重新创建一个有 Write 权限的Token
+1. 访问：https://hub.docker.com/r/nodesire7/nsl-go
+2. 如果显示 **404 Not Found**，说明仓库不存在，需要先创建：
+   - 访问：https://hub.docker.com/
+   - 点击右上角 "+" → "Create Repository"
+   - 仓库名称：`nsl-go`
+   - 可见性：Public 或 Private
+   - 点击 "Create"
+3. 创建后，再次访问 https://hub.docker.com/r/nodesire7/nsl-go 应该能看到仓库页面
 
-3. ✅ **确认Token未过期**
-   - 检查Token是否还在有效期内
-   - 如果过期，重新生成并更新GitHub Secrets
+### 步骤 2: 确认Token权限 ⭐ 必须包含 Write
 
-4. ✅ **确认Secrets配置正确**
-   - `DOCKERHUB_USERNAME` 应该是你的Docker Hub用户名（如：`nodesire7`）
-   - `DOCKERHUB_TOKEN` 应该是完整的Token字符串（以 `dckr_pat_` 开头）
+错误信息 `insufficient_scope` 通常表示 Token 权限不足。
+
+1. 登录 Docker Hub: https://hub.docker.com/
+2. 点击右上角头像 → Account Settings → Security
+3. 找到你的 Token，检查权限：
+   - ❌ 如果只有 "Read" 权限 → 无法推送
+   - ✅ 必须有 "Write" 或 "Read, Write & Delete" 权限
+4. 如果权限不足：
+   - 删除旧 Token
+   - 创建新 Token，**必须选择 "Read, Write & Delete"**
+   - 复制新 Token
+   - 更新 GitHub Secrets 中的 `DOCKERHUB_TOKEN`
+
+### 步骤 3: 验证Token有效性
+
+1. 检查 Token 是否过期
+2. 确认 Token 格式正确（应该以 `dckr_pat_` 开头）
+3. 如果 Token 过期，重新生成并更新 GitHub Secrets
+
+### 步骤 4: 确认Secrets配置
+
+在 GitHub 仓库设置中检查：
+- `DOCKERHUB_USERNAME` = `nodesire7`（你的 Docker Hub 用户名，不含 `@` 符号）
+- `DOCKERHUB_TOKEN` = 完整的 Token 字符串（以 `dckr_pat_` 开头）
+
+### 快速检查清单
+
+- [ ] Docker Hub 仓库已创建（访问 https://hub.docker.com/r/nodesire7/nsl-go 能看到页面）
+- [ ] Token 权限包含 "Write" 或 "Read, Write & Delete"
+- [ ] Token 未过期
+- [ ] GitHub Secrets 中 `DOCKERHUB_USERNAME` 和 `DOCKERHUB_TOKEN` 都已正确配置
+- [ ] `DOCKERHUB_USERNAME` 不包含 `@` 符号（只是用户名，不是邮箱）
+
+**如果以上都确认无误，但仍有问题，请检查：**
+- Token 是否被意外删除或撤销
+- Docker Hub 账户是否被限制
+- 网络连接是否正常
 
 ### 3. 验证配置
 

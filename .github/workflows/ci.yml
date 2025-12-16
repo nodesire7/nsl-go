@@ -68,6 +68,26 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     
+    - name: Verify Docker Hub access
+      if: github.event_name != 'pull_request' && steps.check-secrets.outputs.has_secrets == 'true'
+      run: |
+        echo "🔍 验证 Docker Hub 连接..."
+        echo "用户名: ${{ secrets.DOCKERHUB_USERNAME }}"
+        echo "仓库: ${{ env.IMAGE_NAME }}"
+        
+        # 测试 Docker Hub API 连接
+        echo "测试 Docker Hub API..."
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/nsl-go/")
+        
+        if [ "$RESPONSE" == "200" ]; then
+          echo "✅ 仓库存在"
+        elif [ "$RESPONSE" == "404" ]; then
+          echo "❌ 仓库不存在！请访问 https://hub.docker.com/ 创建仓库 'nsl-go'"
+          echo "   完整路径应该是: ${{ env.IMAGE_NAME }}"
+        else
+          echo "⚠️ 无法验证仓库状态 (HTTP $RESPONSE)"
+        fi
+    
     - name: Extract metadata
       id: meta
       if: github.event_name != 'pull_request' && steps.check-secrets.outputs.has_secrets == 'true'
