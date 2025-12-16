@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"short-link/config"
 	"short-link/database"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
