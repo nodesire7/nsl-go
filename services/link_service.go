@@ -60,7 +60,7 @@ func (s *LinkService) GetAvailableCodeLength() (int, error) {
 	}
 	
 	// 获取当前使用的最大长度
-	currentMax, err := database.GetMaxCodeLength()
+	currentMax, err := database.GetCurrentMaxCodeLength()
 	if err != nil {
 		return minLength, err
 	}

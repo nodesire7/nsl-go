@@ -5,7 +5,6 @@
 package database
 
 import (
-	"fmt"
 	"short-link/models"
 )
 

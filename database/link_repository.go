@@ -312,8 +312,8 @@ func GetCodeCountByLength(length int) (int64, error) {
 	return count, err
 }
 
-// GetMaxCodeLength 获取当前使用的最大代码长度
-func GetMaxCodeLength() (int, error) {
+// GetCurrentMaxCodeLength 获取当前使用的最大代码长度（从links表）
+func GetCurrentMaxCodeLength() (int, error) {
 	var maxLength sql.NullInt64
 	query := `SELECT MAX(LENGTH(code)) FROM links`
 	err := DB.QueryRow(query).Scan(&maxLength)
