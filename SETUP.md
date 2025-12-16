@@ -19,19 +19,19 @@
 
 **获取Docker Hub Token步骤**：
 1. 登录 Docker Hub: https://hub.docker.com/
-2. 点击右上角头像 → Account Settings
-3. 左侧菜单选择 Security
-4. 点击 "New Access Token"
+2. 点击右上角头像 → Account Settings（账户设置）
+3. 左侧菜单选择 Security（安全）
+4. 点击 "New Access Token"（新建访问令牌）
 5. 输入描述（如：GitHub Actions）
-6. 选择权限：Read & Write
+6. 选择权限：Read & Write（读写）
 7. 复制生成的Token
 
 ### 3. 验证配置
 
 配置完成后，每次推送到main分支都会：
 - ✅ 自动构建Docker镜像并推送到Docker Hub
-- ✅ 自动构建多平台二进制文件
-- ✅ 自动创建GitHub Releases
+- ✅ 自动构建多平台二进制文件（Linux、Windows、macOS）
+- ✅ 自动创建GitHub Releases（发布版本）
 
 ## 本地开发环境
 
