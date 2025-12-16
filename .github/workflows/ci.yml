@@ -217,8 +217,23 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Version: $VERSION"
     
+    - name: Check if archives exist
+      id: check-archives
+      run: |
+        ARCHIVES=$(ls nsl-go-*.tar.gz nsl-go-*.zip 2>/dev/null | tr '\n' ' ' || echo "")
+        if [ -z "$ARCHIVES" ]; then
+          echo "has_archives=false" >> $GITHUB_OUTPUT
+          echo "⚠️ 没有找到任何归档文件"
+        else
+          echo "has_archives=true" >> $GITHUB_OUTPUT
+          echo "✅ 找到归档文件: $ARCHIVES"
+        fi
+    
     - name: Create GitHub Release
+      if: steps.check-archives.outputs.has_archives == 'true'
       uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         name: 发布版本 ${{ steps.version.outputs.version }}
         body: |
@@ -248,7 +263,7 @@ jobs:
         files: |
           nsl-go-*.tar.gz
           nsl-go-*.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
         draft: false
         prerelease: false
+        make_latest: true
 
