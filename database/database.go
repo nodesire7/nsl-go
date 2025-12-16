@@ -5,11 +5,15 @@
 package database
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log"
+	"time"
 	"short-link/config"
-
+	"short-link/models"
+	"golang.org/x/crypto/bcrypt"
 	_ "github.com/lib/pq"
 )
 
