@@ -23,7 +23,7 @@
 
 1. 登录 Docker Hub: https://hub.docker.com/
 2. 点击右上角 "+" → "Create Repository"（创建仓库）
-3. 仓库名称填写：`nsl-go`（完整路径为：`nodesire7/nsl-go`）
+3. 仓库名称填写：`nsl-go`（完整路径为：`nodesire77/nsl-go`）
 4. 选择可见性：Public（公开）或 Private（私有）
 5. 点击 "Create"（创建）
 
@@ -46,7 +46,7 @@
 
 ### 步骤 1: 确认仓库已创建 ⭐ 最重要
 
-1. 访问：https://hub.docker.com/r/nodesire7/nsl-go
+1. 访问：https://hub.docker.com/r/nodesire77/nsl-go
 2. 如果显示 **404 Not Found**，说明仓库不存在，需要先创建：
    - 访问：https://hub.docker.com/
    - 点击右上角 "+" → "Create Repository"
