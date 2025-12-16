@@ -17,24 +17,48 @@
 - **名称**: `DOCKERHUB_TOKEN`
 - **值**: Docker Hub访问令牌
 
-**获取Docker Hub Token步骤**：
-1. 登录 Docker Hub: https://hub.docker.com/
-2. 点击右上角头像 → Account Settings（账户设置）
-3. 左侧菜单选择 Security（安全）
-4. 点击 "New Access Token"（新建访问令牌）
-5. 输入描述（如：GitHub Actions）
-6. 选择权限：**Read, Write & Delete**（读写删除，必须包含推送权限）
-7. 复制生成的Token（只显示一次，请妥善保存）
+**重要：必须先创建Docker Hub仓库！**
 
-**重要：创建Docker Hub仓库**
-在推送镜像之前，需要先在Docker Hub创建仓库：
+在配置Token之前，请先创建Docker Hub仓库：
+
 1. 登录 Docker Hub: https://hub.docker.com/
 2. 点击右上角 "+" → "Create Repository"（创建仓库）
 3. 仓库名称填写：`nsl-go`（完整路径为：`nodesire7/nsl-go`）
 4. 选择可见性：Public（公开）或 Private（私有）
 5. 点击 "Create"（创建）
 
-**注意**：如果仓库已存在，可以跳过此步骤。如果推送失败提示"repository does not exist"，请先创建仓库。
+**获取Docker Hub Token步骤**：
+1. 登录 Docker Hub: https://hub.docker.com/
+2. 点击右上角头像 → Account Settings（账户设置）
+3. 左侧菜单选择 Security（安全）
+4. 点击 "New Access Token"（新建访问令牌）
+5. 输入描述（如：GitHub Actions）
+6. **选择权限：Read, Write & Delete**（读写删除，必须包含推送权限）
+   - ⚠️ 如果只选择 Read，将无法推送镜像
+   - ⚠️ 必须至少包含 Write 权限
+7. 点击 "Generate"（生成）
+8. 复制生成的Token（只显示一次，请妥善保存）
+9. 将Token粘贴到GitHub Secrets的 `DOCKERHUB_TOKEN` 中
+
+**常见问题排查**：
+
+如果遇到 "push access denied" 或 "repository does not exist" 错误：
+
+1. ✅ **确认仓库已创建**
+   - 访问：https://hub.docker.com/r/nodesire7/nsl-go
+   - 如果显示404，说明仓库不存在，需要先创建
+
+2. ✅ **确认Token权限**
+   - 重新检查Token权限，必须包含 Write 权限
+   - 如果权限不足，删除旧Token，重新创建一个有 Write 权限的Token
+
+3. ✅ **确认Token未过期**
+   - 检查Token是否还在有效期内
+   - 如果过期，重新生成并更新GitHub Secrets
+
+4. ✅ **确认Secrets配置正确**
+   - `DOCKERHUB_USERNAME` 应该是你的Docker Hub用户名（如：`nodesire7`）
+   - `DOCKERHUB_TOKEN` 应该是完整的Token字符串（以 `dckr_pat_` 开头）
 
 ### 3. 验证配置
 

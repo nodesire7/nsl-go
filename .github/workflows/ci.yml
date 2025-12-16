@@ -55,8 +55,10 @@ jobs:
       run: |
         if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
           echo "has_secrets=true" >> $GITHUB_OUTPUT
+          echo "✅ Docker Hub secrets 已配置"
         else
           echo "has_secrets=false" >> $GITHUB_OUTPUT
+          echo "⚠️ Docker Hub secrets 未配置，将跳过 Docker 构建"
         fi
     
     - name: Log in to Docker Hub
@@ -90,6 +92,22 @@ jobs:
         cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
         cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
       continue-on-error: true
+    
+    - name: Docker push status
+      if: github.event_name != 'pull_request' && steps.check-secrets.outputs.has_secrets == 'true'
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Docker 镜像推送成功"
+        else
+          echo "⚠️ Docker 镜像推送失败，但构建继续"
+          echo ""
+          echo "可能的原因："
+          echo "1. Docker Hub 仓库不存在，请访问 https://hub.docker.com/ 创建仓库 'nsl-go'"
+          echo "2. Token 权限不足，需要 'Read, Write & Delete' 权限"
+          echo "3. Token 已过期或无效，请重新生成"
+          echo ""
+          echo "详细步骤请查看 SETUP.md 文档"
+        fi
 
   release:
     needs: build
