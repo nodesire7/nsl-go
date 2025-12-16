@@ -58,10 +58,30 @@ func (h *UserHandler) Register(c *gin.Context) {
 			ID:        user.ID,
 			Username:  user.Username,
 			Email:     user.Email,
+			APIToken:  user.APIToken,
 			Role:      user.Role,
 			MaxLinks:  user.MaxLinks,
 			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05"),
 		},
+	})
+}
+
+// UpdateToken 更新用户Token
+func (h *UserHandler) UpdateToken(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	
+	newToken, err := h.userService.UpdateUserToken(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "更新Token失败: " + err.Error(),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"api_token": newToken,
+		"message": "Token已更新，旧Token已失效",
 	})
 }
 
