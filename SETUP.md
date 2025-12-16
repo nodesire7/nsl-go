@@ -9,13 +9,30 @@
 
 ### 2. 添加以下Secrets
 
-#### DOCKERHUB_USERNAME
+#### DOCKERHUB_USERNAME（可选）
 - **名称**: `DOCKERHUB_USERNAME`
-- **值**: 你的Docker Hub用户名（例如：`nodesire7`）
+- **值**: 你的Docker Hub用户名（例如：`nodesire77`）
+- **说明**: 如果不需要推送Docker镜像到Docker Hub，可以跳过此配置
 
-#### DOCKERHUB_TOKEN
+#### DOCKERHUB_TOKEN（可选）
 - **名称**: `DOCKERHUB_TOKEN`
 - **值**: Docker Hub访问令牌
+- **说明**: 如果不需要推送Docker镜像到Docker Hub，可以跳过此配置
+
+#### GITHUB_TOKEN（通常不需要手动配置）
+- **说明**: GitHub Actions 会自动提供 `GITHUB_TOKEN`，通常不需要手动配置
+- **如果遇到 403 权限错误**，请检查仓库设置：
+  1. 访问：https://github.com/nodesire7/nsl-go/settings/actions
+  2. 找到 "Workflow permissions"（工作流权限）部分
+  3. 确保设置为：
+     - ✅ "Read and write permissions"（读写权限）
+     - ✅ "Allow GitHub Actions to create and approve pull requests"（允许创建和批准PR）
+  4. 如果仍然失败，可以创建 Personal Access Token (PAT)：
+     - 访问：https://github.com/settings/tokens
+     - 点击 "Generate new token" → "Generate new token (classic)"
+     - 选择权限：`repo`（完整仓库访问权限）
+     - 复制生成的 token
+     - 在 GitHub Secrets 中添加：`GITHUB_TOKEN` = 你的 PAT
 
 **重要：必须先创建Docker Hub仓库！**
 
