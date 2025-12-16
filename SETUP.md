@@ -23,8 +23,18 @@
 3. 左侧菜单选择 Security（安全）
 4. 点击 "New Access Token"（新建访问令牌）
 5. 输入描述（如：GitHub Actions）
-6. 选择权限：Read & Write（读写）
-7. 复制生成的Token
+6. 选择权限：**Read, Write & Delete**（读写删除，必须包含推送权限）
+7. 复制生成的Token（只显示一次，请妥善保存）
+
+**重要：创建Docker Hub仓库**
+在推送镜像之前，需要先在Docker Hub创建仓库：
+1. 登录 Docker Hub: https://hub.docker.com/
+2. 点击右上角 "+" → "Create Repository"（创建仓库）
+3. 仓库名称填写：`nsl-go`（完整路径为：`nodesire7/nsl-go`）
+4. 选择可见性：Public（公开）或 Private（私有）
+5. 点击 "Create"（创建）
+
+**注意**：如果仓库已存在，可以跳过此步骤。如果推送失败提示"repository does not exist"，请先创建仓库。
 
 ### 3. 验证配置
 
