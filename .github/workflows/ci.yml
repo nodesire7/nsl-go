@@ -186,7 +186,7 @@ jobs:
         
         cp nsl-go-darwin-arm64 release-darwin-arm64/nsl-go
         cp -r web release-darwin-arm64/
-        tar -czf nsl-go-darwin-arm64.tar.gz -C release-darwin-arm64/
+        tar -czf nsl-go-darwin-arm64.tar.gz -C release-darwin-arm64 .
     
     - name: Get version from tag or commit
       id: version
