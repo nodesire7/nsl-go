@@ -145,11 +145,11 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        name: Release ${{ steps.version.outputs.version }}
+        name: 发布版本 ${{ steps.version.outputs.version }}
         body: |
-          ## New short link (NSL GO) ${{ steps.version.outputs.version }}
+          ## 🔗 New short link (NSL GO) ${{ steps.version.outputs.version }}
           
-          ### 下载
+          ### 📥 下载
           - **Linux AMD64**: [nsl-go-linux-amd64.tar.gz](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/nsl-go-linux-amd64.tar.gz)
           - **Linux ARM64**: [nsl-go-linux-arm64.tar.gz](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/nsl-go-linux-arm64.tar.gz)
           - **Windows AMD64**: [nsl-go-windows-amd64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/nsl-go-windows-amd64.zip)
