@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: short-link-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shortlink
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - short-link-network
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.5
+    container_name: short-link-meilisearch
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_KEY:-masterKey}
+      MEILI_ENV: development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    networks:
+      - short-link-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: short-link-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - short-link-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: short-link-app
+    environment:
+      API_TOKEN: ${API_TOKEN:-change-me-in-production}
+      BASE_URL: ${BASE_URL:-http://localhost:9110}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: shortlink
+      DB_SSLMODE: disable
+      MEILI_HOST: http://meilisearch:7700
+      MEILI_KEY: ${MEILI_KEY:-masterKey}
+      REDIS_HOST: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      MIN_CODE_LENGTH: ${MIN_CODE_LENGTH:-6}
+      MAX_CODE_LENGTH: ${MAX_CODE_LENGTH:-10}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SERVER_PORT: 9110
+      SERVER_MODE: release
+    ports:
+      - "9110:9110"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - short-link-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  meilisearch_data:
+  redis_data:
+
+networks:
+  short-link-network:
+    driver: bridge
+

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔗 短链接管理系统</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="showCreateModal()">创建链接</button>
+                <button class="btn btn-secondary" onclick="refreshStats()">刷新统计</button>
+            </div>
+        </header>
+
+        <!-- 统计面板 -->
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-label">总链接数</div>
+                <div class="stat-value" id="totalLinks">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">总点击数</div>
+                <div class="stat-value" id="totalClicks">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">今日点击数</div>
+                <div class="stat-value" id="todayClicks">0</div>
+            </div>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="搜索链接..." onkeyup="handleSearch(event)">
+            <button class="btn btn-primary" onclick="performSearch()">搜索</button>
+        </div>
+
+        <!-- 链接列表 -->
+        <div class="links-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>短代码</th>
+                        <th>原始URL</th>
+                        <th>标题</th>
+                        <th>点击数</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="linksTableBody">
+                    <tr>
+                        <td colspan="6" class="loading">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 创建链接模态框 -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCreateModal()">&times;</span>
+            <h2>创建短链接</h2>
+            <form id="createForm" onsubmit="createLink(event)">
+                <div class="form-group">
+                    <label for="originalUrl">原始URL *</label>
+                    <input type="url" id="originalUrl" required placeholder="https://example.com">
+                </div>
+                <div class="form-group">
+                    <label for="linkTitle">标题</label>
+                    <input type="text" id="linkTitle" placeholder="链接标题">
+                </div>
+                <div class="form-group">
+                    <label for="customCode">自定义代码（可选）</label>
+                    <input type="text" id="customCode" placeholder="留空则自动生成">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">创建</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+
