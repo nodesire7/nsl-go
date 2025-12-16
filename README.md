@@ -199,6 +199,32 @@ curl -X GET "http://localhost:9110/api/v1/links/search?q=example" \
 - **用途**: 用于API调用，替代JWT Token进行长期访问
 - **安全**: Token存储在数据库中，建议定期更新
 
+## 👤 Admin用户管理
+
+系统首次启动时会自动创建admin用户，密码会在日志中输出。
+
+### 重置Admin密码
+
+使用管理工具重置admin密码：
+
+```bash
+# 编译管理工具
+make build-admin
+
+# 随机生成新密码
+./nsl-admin -action=reset-password
+
+# 指定新密码
+./nsl-admin -action=reset-password -password=MyNewPassword123
+
+# 查看admin用户信息
+./nsl-admin -action=show-info
+```
+
+### 登录页面
+
+访问 `http://localhost:9110/login` 进入登录页面。
+
 ## 🎨 Web UI
 
 访问 `http://localhost:9110` 查看Web管理面板。

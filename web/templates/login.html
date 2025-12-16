@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 短链接管理系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-login:hover {
+            background: #45a049;
+        }
+        .error-message {
+            color: #f44336;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+        .register-link a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔗 短链接管理系统</h1>
+            <p>请登录您的账户</p>
+        </div>
+        
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <div class="error-message" id="errorMessage"></div>
+            
+            <button type="submit" class="btn-login">登录</button>
+        </form>
+        
+        <div class="register-link">
+            还没有账户？<a href="/register">立即注册</a>
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // 隐藏错误消息
+            errorMessage.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 保存token
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // 跳转到主页
+                    window.location.href = '/';
+                } else {
+                    // 显示错误消息
+                    errorMessage.textContent = data.error || '登录失败，请检查用户名和密码';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                errorMessage.textContent = '网络错误，请稍后重试';
+                errorMessage.style.display = 'block';
+            }
+        }
+        
+        // 如果已登录，重定向到主页
+        if (localStorage.getItem('token')) {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
+

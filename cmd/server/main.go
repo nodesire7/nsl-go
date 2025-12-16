@@ -38,6 +38,11 @@ func main() {
 	defer database.CloseDB()
 	utils.LogInfo("数据库初始化完成")
 	
+	// 初始化admin用户
+	if err := database.InitAdminUser(); err != nil {
+		utils.LogWarn("Admin用户初始化失败: %v", err)
+	}
+	
 	// 初始化Redis
 	if err := cache.InitRedis(); err != nil {
 		utils.LogWarn("Redis初始化失败，缓存功能将不可用: %v", err)

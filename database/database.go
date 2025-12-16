@@ -133,6 +133,78 @@ func Migrate() error {
 	return nil
 }
 
+// InitAdminUser 初始化admin用户
+func InitAdminUser() error {
+	// 检查admin用户是否存在
+	exists, err := CheckUsernameExists("admin")
+	if err != nil {
+		return fmt.Errorf("检查admin用户失败: %w", err)
+	}
+	
+	if exists {
+		return nil // admin用户已存在
+	}
+	
+	// 生成随机密码
+	randomPassword := generateRandomPassword(16)
+	
+	// 加密密码
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("密码加密失败: %w", err)
+	}
+	
+	// 生成API Token
+	apiTokenBytes := make([]byte, 32)
+	if _, err := rand.Read(apiTokenBytes); err != nil {
+		return fmt.Errorf("生成API Token失败: %w", err)
+	}
+	apiToken := "nsl_" + hex.EncodeToString(apiTokenBytes)
+	
+	// 创建admin用户
+	adminUser := &models.User{
+		Username:  "admin",
+		Email:      "admin@localhost",
+		Password:   string(hashedPassword),
+		APIToken:   apiToken,
+		Role:       "admin",
+		MaxLinks:   -1, // admin无限制
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	
+	if err := CreateUser(adminUser); err != nil {
+		return fmt.Errorf("创建admin用户失败: %w", err)
+	}
+	
+	// 输出admin用户信息到日志
+	log.Println("==========================================")
+	log.Println("✅ Admin用户已创建")
+	log.Println("==========================================")
+	log.Printf("用户名: admin")
+	log.Printf("密码: %s", randomPassword)
+	log.Printf("API Token: %s", apiToken)
+	log.Println("==========================================")
+	log.Println("⚠️  请妥善保管以上信息，建议首次登录后修改密码")
+	log.Println("==========================================")
+	
+	return nil
+}
+
+// generateRandomPassword 生成随机密码
+func generateRandomPassword(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		// 如果随机数生成失败，使用时间戳作为后备
+		return fmt.Sprintf("admin%d", time.Now().Unix())
+	}
+	for i, b := range bytes {
+		bytes[i] = charset[b%byte(len(charset))]
+	}
+	return string(bytes)
+}
+
 // CloseDB 关闭数据库连接
 func CloseDB() error {
 	if DB != nil {

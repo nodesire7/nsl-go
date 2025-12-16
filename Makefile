@@ -4,6 +4,10 @@
 build:
 	go build -o bin/short-link ./cmd/server
 
+# 构建admin管理工具
+build-admin:
+	go build -o bin/nsl-admin ./cmd/admin
+
 # 运行应用
 run:
 	go run ./cmd/server

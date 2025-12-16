@@ -147,3 +147,28 @@ func UpdateUserMaxLinks(userID int64, maxLinks int) error {
 	return err
 }
 
+// UpdateUserPassword 更新用户密码
+func UpdateUserPassword(username string, hashedPassword string) error {
+	query := `UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE username = $2`
+	result, err := DB.Exec(query, hashedPassword, username)
+	if err != nil {
+		return err
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rowsAffected == 0 {
+		return fmt.Errorf("用户不存在")
+	}
+	
+	return nil
+}
+
+// GetAdminUser 获取admin用户
+func GetAdminUser() (*models.User, error) {
+	return GetUserByUsername("admin")
+}
+
