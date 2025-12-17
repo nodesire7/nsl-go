@@ -22,6 +22,10 @@ type Config struct {
 	ReadTimeout time.Duration
 	WriteTimeout time.Duration
 
+	// 短链 code 长度配置（env 默认值，DB settings 可覆盖）
+	MinCodeLength int
+	MaxCodeLength int
+
 	// PostgreSQL
 	DBHost     string
 	DBPort     int
@@ -48,6 +52,8 @@ func Load() (*Config, error) {
 		JWTSecret:    getenv("JWT_SECRET", ""),
 		ReadTimeout:  time.Second * time.Duration(getenvInt("READ_TIMEOUT_SECONDS", 10)),
 		WriteTimeout: time.Second * time.Duration(getenvInt("WRITE_TIMEOUT_SECONDS", 10)),
+		MinCodeLength: getenvInt("MIN_CODE_LENGTH", 6),
+		MaxCodeLength: getenvInt("MAX_CODE_LENGTH", 10),
 
 		DBHost:     getenv("DB_HOST", "localhost"),
 		DBPort:     getenvInt("DB_PORT", 5432),
@@ -66,6 +72,9 @@ func Load() (*Config, error) {
 	// 强制安全基线：生产/默认都要求 JWT_SECRET
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET 未设置：请设置强随机密钥（建议 openssl rand -hex 32）")
+	}
+	if cfg.MinCodeLength <= 0 || cfg.MaxCodeLength <= 0 || cfg.MinCodeLength > cfg.MaxCodeLength {
+		return nil, fmt.Errorf("MIN_CODE_LENGTH / MAX_CODE_LENGTH 配置无效")
 	}
 	return cfg, nil
 }

@@ -26,8 +26,13 @@ type Module struct {
 	Cfg         *config.Config
 	Pool        *db.Pool
 	UserRepo    *repo.UserRepo
+	DomainRepo  *repo.DomainRepo
+	SettingsRepo *repo.SettingsRepo
+	LinkRepo    *repo.LinkRepo
 	UserService *service.UserService
+	LinkService *service.LinkService
 	AuthHandler *handlers.AuthHandler
+	LinkHandler *handlers.LinkHandler
 }
 
 // New 创建 v2 模块
@@ -45,15 +50,27 @@ func New() (*Module, error) {
 	}
 
 	userRepo := repo.NewUserRepo(pool)
+	domainRepo := repo.NewDomainRepo(pool)
+	settingsRepo := repo.NewSettingsRepo(pool)
+	linkRepo := repo.NewLinkRepo(pool)
+
 	userService := service.NewUserService(userRepo)
+	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo)
+
 	authHandler := handlers.NewAuthHandler(cfg, userService)
+	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo)
 
 	return &Module{
 		Cfg:         cfg,
 		Pool:        pool,
 		UserRepo:    userRepo,
+		DomainRepo:  domainRepo,
+		SettingsRepo: settingsRepo,
+		LinkRepo:    linkRepo,
 		UserService: userService,
+		LinkService: linkService,
 		AuthHandler: authHandler,
+		LinkHandler: linkHandler,
 	}, nil
 }
 
@@ -83,6 +100,10 @@ func RegisterRoutes(router *gin.Engine, m *Module) {
 		{
 			protected.GET("/profile", m.AuthHandler.GetProfile)
 			protected.POST("/profile/token", m.AuthHandler.UpdateToken)
+
+			// 链接管理（v2 优先迁移核心能力：创建/列表）
+			protected.POST("/links", m.LinkHandler.CreateLink)
+			protected.GET("/links", m.LinkHandler.GetLinks)
 		}
 	}
 }
