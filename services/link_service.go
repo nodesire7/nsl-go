@@ -10,10 +10,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"short-link/cache"
 	"short-link/config"
 	"short-link/database"
 	"short-link/models"
 	"short-link/utils"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -100,16 +102,6 @@ func (s *LinkService) CreateLink(userID int64, req *models.CreateLinkRequest, do
 	// 生成哈希
 	hash := s.GenerateHash(req.URL)
 	
-	// 检查是否已存在相同URL的链接（同一用户）
-	existingLink, err := database.GetLinkByHashAndUser(hash, userID)
-	if err == nil && existingLink != nil {
-		log.Printf("发现已存在的链接，返回现有链接: %s -> %s", req.URL, existingLink.Code)
-		// 获取域名URL
-		domain, _ := database.GetDomainByID(existingLink.DomainID)
-		shortURL := s.buildShortURL(domain, existingLink.Code, domainService)
-		return existingLink, shortURL, nil
-	}
-	
 	// 获取域名
 	var domainID int64
 	if req.DomainID > 0 {
@@ -170,6 +162,15 @@ func (s *LinkService) CreateLink(userID int64, req *models.CreateLinkRequest, do
 	
 	// 获取域名信息用于生成短链接URL
 	domain, _ := database.GetDomainByID(domainID)
+
+	// 重写版幂等策略：允许同一URL在不同domain下生成不同短链
+	// 因此幂等检查按 (user_id, domain_id, hash) 粒度进行
+	if existingLink, err := database.GetLinkByHashUserDomain(hash, userID, domainID); err == nil && existingLink != nil {
+		log.Printf("发现已存在的链接（同域名幂等），返回现有链接: %s -> %s", req.URL, existingLink.Code)
+		shortURL := s.buildShortURL(domain, existingLink.Code, domainService)
+		return existingLink, shortURL, nil
+	}
+
 	shortURL := s.buildShortURL(domain, code, domainService)
 	
 	// 生成二维码
@@ -192,9 +193,44 @@ func (s *LinkService) CreateLink(userID int64, req *models.CreateLinkRequest, do
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	
-	if err := database.CreateLink(link); err != nil {
-		return nil, "", fmt.Errorf("创建链接失败: %w", err)
+
+	// 并发安全：最终以数据库唯一约束为准，冲突则重试生成
+	if req.Code != "" {
+		if err := database.CreateLink(link); err != nil {
+			if database.IsUniqueViolation(err) {
+				return nil, "", fmt.Errorf("代码 %s 已存在", code)
+			}
+			return nil, "", fmt.Errorf("创建链接失败: %w", err)
+		}
+	} else {
+		createAttempts := 0
+		for {
+			createAttempts++
+			err := database.CreateLink(link)
+			if err == nil {
+				break
+			}
+			if database.IsUniqueViolation(err) && createAttempts < 20 {
+				// 冲突：增加长度或重试
+				if createAttempts%10 == 0 {
+					// 每10次冲突增加长度（受最大值限制）
+					nextLen := len(link.Code) + 1
+					if nextLen > config.AppConfig.MaxCodeLength {
+						return nil, "", fmt.Errorf("无法生成唯一代码，已达到最大长度")
+					}
+					link.Code = s.GenerateRandomCode(nextLen)
+				} else {
+					link.Code = s.GenerateRandomCode(len(link.Code))
+				}
+				// 更新短链接与二维码（保持一致）
+				code = link.Code
+				shortURL = s.buildShortURL(domain, code, domainService)
+				qrCode, _ := utils.GenerateQRCode(shortURL, 256)
+				link.QRCode = qrCode
+				continue
+			}
+			return nil, "", fmt.Errorf("创建链接失败: %w", err)
+		}
 	}
 	
 	log.Printf("创建新链接: %s -> %s", req.URL, code)
@@ -226,6 +262,34 @@ func (s *LinkService) GetLinkByCodeAnyDomain(code string) (*models.Link, error) 
 
 // RedirectLink 重定向链接（增加点击计数）
 func (s *LinkService) RedirectLink(code string, ip, userAgent, referer string) (string, error) {
+	// 热点缓存：优先从Redis读取（仅缓存读取路径，写入仍落DB）
+	if cache.RedisClient != nil {
+		if v, err := cache.Get("redir:" + code); err == nil && v != "" {
+			// 格式：<id>|<url>
+			parts := strings.SplitN(v, "|", 2)
+			if len(parts) == 2 {
+				if id, err := strconv.ParseInt(parts[0], 10, 64); err == nil {
+					// 增加点击计数（DB写）
+					if err := database.IncrementClickCount(id); err != nil {
+						log.Printf("增加点击计数失败: %v", err)
+					}
+					// 记录访问日志（DB写）
+					accessLog := &models.AccessLog{
+						LinkID:    id,
+						IP:        ip,
+						UserAgent: userAgent,
+						Referer:   referer,
+						CreatedAt: time.Now(),
+					}
+					if err := database.CreateAccessLog(accessLog); err != nil {
+						log.Printf("记录访问日志失败: %v", err)
+					}
+					return parts[1], nil
+				}
+			}
+		}
+	}
+
 	link, err := database.GetLinkByCodeAnyDomain(code)
 	if err != nil {
 		return "", err
@@ -247,6 +311,11 @@ func (s *LinkService) RedirectLink(code string, ip, userAgent, referer string) (
 	if err := database.CreateAccessLog(accessLog); err != nil {
 		log.Printf("记录访问日志失败: %v", err)
 	}
+
+	// 写入缓存（1小时）
+	if cache.RedisClient != nil {
+		_ = cache.Set("redir:"+code, fmt.Sprintf("%d|%s", link.ID, link.OriginalURL), time.Hour)
+	}
 	
 	return link.OriginalURL, nil
 }
@@ -264,7 +333,12 @@ func (s *LinkService) GetLinks(userID int64, page, limit int) ([]models.Link, in
 
 // DeleteLink 删除链接
 func (s *LinkService) DeleteLink(userID int64, code string) error {
-	return database.DeleteUserLink(userID, code)
+	if err := database.DeleteUserLink(userID, code); err != nil {
+		return err
+	}
+	// 删除缓存（best-effort）
+	_ = cache.Delete("redir:" + code)
+	return nil
 }
 
 // GetStats 获取统计信息

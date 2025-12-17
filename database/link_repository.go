@@ -123,6 +123,32 @@ func GetLinkByHashAndUser(hash string, userID int64) (*models.Link, error) {
 	return link, err
 }
 
+// GetLinkByHashUserDomain 根据哈希+用户+域名获取链接（重写版：允许同一URL在不同domain下生成不同短链）
+func GetLinkByHashUserDomain(hash string, userID int64, domainID int64) (*models.Link, error) {
+	link := &models.Link{}
+	query := `SELECT id, user_id, domain_id, code, original_url, title, hash, qr_code, click_count, created_at, updated_at 
+			  FROM links WHERE hash = $1 AND user_id = $2 AND domain_id = $3 LIMIT 1`
+
+	err := DB.QueryRow(query, hash, userID, domainID).Scan(
+		&link.ID,
+		&link.UserID,
+		&link.DomainID,
+		&link.Code,
+		&link.OriginalURL,
+		&link.Title,
+		&link.Hash,
+		&link.QRCode,
+		&link.ClickCount,
+		&link.CreatedAt,
+		&link.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return link, err
+}
+
 // CheckCodeExists 检查代码是否已存在（已废弃，使用CheckCodeExistsInDomain）
 func CheckCodeExists(code string) (bool, error) {
 	return CheckCodeExistsInDomain(code, 0)

@@ -8,6 +8,7 @@ require (
 	github.com/meilisearch/meilisearch-go v0.25.0
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.5.0
+	github.com/jackc/pgx/v5 v5.5.5
 	golang.org/x/crypto v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 	github.com/joho/godotenv v1.5.1
