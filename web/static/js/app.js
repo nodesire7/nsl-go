@@ -15,6 +15,22 @@ function getCSRFToken() {
     return getCookie('csrf_token');
 }
 
+async function logout() {
+    try {
+        await fetch(`${API_BASE}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-Token': getCSRFToken()
+            },
+            credentials: 'include'
+        });
+    } catch (e) {
+        // ignore
+    } finally {
+        window.location.href = '/login';
+    }
+}
+
 let currentPage = 1;
 let currentLimit = 20;
 let isSearchMode = false;

@@ -21,7 +21,8 @@ func AuthMiddleware() gin.HandlerFunc {
 		   c.Request.URL.Path == "/login" ||
 		   c.Request.URL.Path == "/register" ||
 		   c.Request.URL.Path == "/api/v1/auth/register" ||
-		   c.Request.URL.Path == "/api/v1/auth/login" {
+		   c.Request.URL.Path == "/api/v1/auth/login" ||
+		   c.Request.URL.Path == "/api/v1/auth/logout" {
 			c.Next()
 			return
 		}

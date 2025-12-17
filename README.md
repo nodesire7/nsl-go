@@ -59,7 +59,7 @@ tar -xzf nsl-go-linux-amd64.tar.gz
 ### Docker Hub
 
 ```bash
-docker pull nodesire7/nsl-go:latest
+docker pull nodesire77/nsl-go:latest
 ```
 
 ## 📋 环境变量

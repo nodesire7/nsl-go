@@ -55,10 +55,12 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 	// 下发 Cookie（HttpOnly）+ CSRF Cookie（双提交）
 	csrfToken, _ := utils.GenerateCSRFToken()
+	c.SetSameSite(http.SameSiteLaxMode)
+	secure := c.Request.TLS != nil
 	// access_token：HttpOnly
-	c.SetCookie("access_token", token, int((24*time.Hour).Seconds()), "/", "", false, true)
+	c.SetCookie("access_token", token, int((24*time.Hour).Seconds()), "/", "", secure, true)
 	// csrf_token：前端可读
-	c.SetCookie("csrf_token", csrfToken, int((24*time.Hour).Seconds()), "/", "", false, false)
+	c.SetCookie("csrf_token", csrfToken, int((24*time.Hour).Seconds()), "/", "", secure, false)
 	
 	c.JSON(http.StatusOK, models.LoginResponse{
 		Token: token, // 兼容：仍返回 token（API 客户端可用）
@@ -122,8 +124,10 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 	// 下发 Cookie（HttpOnly）+ CSRF Cookie（双提交）
 	csrfToken, _ := utils.GenerateCSRFToken()
-	c.SetCookie("access_token", token, int((24*time.Hour).Seconds()), "/", "", false, true)
-	c.SetCookie("csrf_token", csrfToken, int((24*time.Hour).Seconds()), "/", "", false, false)
+	c.SetSameSite(http.SameSiteLaxMode)
+	secure := c.Request.TLS != nil
+	c.SetCookie("access_token", token, int((24*time.Hour).Seconds()), "/", "", secure, true)
+	c.SetCookie("csrf_token", csrfToken, int((24*time.Hour).Seconds()), "/", "", secure, false)
 	
 	c.JSON(http.StatusOK, models.LoginResponse{
 		Token: token, // 兼容：仍返回 token（API 客户端可用）
@@ -137,6 +141,16 @@ func (h *UserHandler) Login(c *gin.Context) {
 			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05"),
 		},
 	})
+}
+
+// Logout 退出登录（清理Cookie）
+func (h *UserHandler) Logout(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	secure := c.Request.TLS != nil
+	// MaxAge=-1 删除Cookie
+	c.SetCookie("access_token", "", -1, "/", "", secure, true)
+	c.SetCookie("csrf_token", "", -1, "/", "", secure, false)
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 // GetProfile 获取用户信息

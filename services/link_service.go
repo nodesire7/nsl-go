@@ -99,6 +99,11 @@ func (s *LinkService) GetAvailableCodeLength() (int, error) {
 
 // CreateLink 创建短链接
 func (s *LinkService) CreateLink(userID int64, req *models.CreateLinkRequest, domainService *DomainService) (*models.Link, string, error) {
+	// URL 安全校验（SSRF基础防护）
+	if err := utils.ValidateExternalURL(req.URL); err != nil {
+		return nil, "", fmt.Errorf("URL不合法: %s", err.Error())
+	}
+
 	// 生成哈希
 	hash := s.GenerateHash(req.URL)
 	

@@ -84,6 +84,8 @@ func Run() error {
 	// 中间件（全局）
 	router.Use(middleware.LoggerMiddleware())
 	router.Use(middleware.RateLimitMiddleware())
+	router.Use(middleware.SecurityHeadersMiddleware())
+	router.Use(middleware.RequestIDMiddleware())
 
 	// 静态文件服务（用于Web UI）
 	router.Static("/static", "./web/static")
@@ -119,6 +121,7 @@ func Run() error {
 		{
 			auth.POST("/register", userHandler.Register)
 			auth.POST("/login", userHandler.Login)
+			auth.POST("/logout", userHandler.Logout)
 		}
 
 		// 需要认证的API

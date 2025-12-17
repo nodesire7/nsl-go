@@ -70,7 +70,7 @@
    - 仓库名称：`nsl-go`
    - 可见性：Public 或 Private
    - 点击 "Create"
-3. 创建后，再次访问 https://hub.docker.com/r/nodesire7/nsl-go 应该能看到仓库页面
+3. 创建后，再次访问 https://hub.docker.com/r/nodesire77/nsl-go 应该能看到仓库页面
 
 ### 步骤 2: 确认Token权限 ⭐ 必须包含 Write
 
@@ -101,7 +101,7 @@
 
 ### 快速检查清单
 
-- [ ] Docker Hub 仓库已创建（访问 https://hub.docker.com/r/nodesire7/nsl-go 能看到页面）
+- [ ] Docker Hub 仓库已创建（访问 https://hub.docker.com/r/nodesire77/nsl-go 能看到页面）
 - [ ] Token 权限包含 "Write" 或 "Read, Write & Delete"
 - [ ] Token 未过期
 - [ ] GitHub Secrets 中 `DOCKERHUB_USERNAME` 和 `DOCKERHUB_TOKEN` 都已正确配置
@@ -175,7 +175,7 @@ go run cmd/api/main.go
 
 ```bash
 # 拉取最新镜像
-docker pull nodesire7/nsl-go:latest
+docker pull nodesire77/nsl-go:latest
 
 # 运行容器
 docker run -d \
@@ -184,7 +184,7 @@ docker run -d \
   -e JWT_SECRET=your-jwt-secret \
   -e DB_HOST=postgres \
   -e DB_PASSWORD=password \
-  nodesire7/nsl-go:latest
+  nodesire77/nsl-go:latest
 ```
 
 ### 二进制文件部署

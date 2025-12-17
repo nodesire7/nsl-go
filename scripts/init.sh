@@ -5,10 +5,10 @@
 echo "正在初始化短链接系统..."
 
 # 检查环境变量
-if [ -z "$API_TOKEN" ]; then
-    echo "警告: API_TOKEN 未设置，将使用默认值"
-    export API_TOKEN=$(openssl rand -hex 32)
-    echo "生成的API Token: $API_TOKEN"
+if [ -z "$JWT_SECRET" ]; then
+    echo "警告: JWT_SECRET 未设置，将自动生成一个随机密钥（生产环境请自行配置并妥善保存）"
+    export JWT_SECRET=$(openssl rand -hex 32)
+    echo "生成的JWT_SECRET: $JWT_SECRET"
 fi
 
 # 等待数据库就绪
