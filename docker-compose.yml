@@ -60,7 +60,8 @@ services:
       dockerfile: Dockerfile
     container_name: short-link-app
     environment:
-      API_TOKEN: ${API_TOKEN:-change-me-in-production}
+      # 重写版：JWT_SECRET 必须配置（用于签发/验证登录Cookie JWT）
+      JWT_SECRET: ${JWT_SECRET:?请设置JWT_SECRET（建议openssl rand -hex 32）}
       BASE_URL: ${BASE_URL:-http://localhost:9110}
       DB_HOST: postgres
       DB_PORT: 5432

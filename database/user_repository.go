@@ -5,7 +5,9 @@
 package database
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"short-link/models"
 	"time"
@@ -13,9 +15,14 @@ import (
 
 // CreateUser 创建用户
 func CreateUser(user *models.User) error {
+	tokenHash := ""
+	if user.APIToken != "" {
+		h := sha256.Sum256([]byte(user.APIToken))
+		tokenHash = hex.EncodeToString(h[:])
+	}
 	query := `
-		INSERT INTO users (username, email, password, api_token, role, max_links, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO users (username, email, password, api_token, api_token_hash, role, max_links, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id
 	`
 	
@@ -24,7 +31,8 @@ func CreateUser(user *models.User) error {
 		user.Username,
 		user.Email,
 		user.Password,
-		user.APIToken,
+		user.APIToken, // 兼容字段：现阶段仍写入（后续重写版会移除明文存储）
+		tokenHash,
 		user.Role,
 		user.MaxLinks,
 		user.CreatedAt,
@@ -87,10 +95,15 @@ func GetUserByID(userID int64) (*models.User, error) {
 // GetUserByToken 根据Token获取用户
 func GetUserByToken(token string) (*models.User, error) {
 	user := &models.User{}
+	h := sha256.Sum256([]byte(token))
+	tokenHash := hex.EncodeToString(h[:])
+	// 兼容：优先用 api_token_hash 匹配（重写版），否则回退 api_token 明文（旧数据）
 	query := `SELECT id, username, email, password, api_token, role, max_links, created_at, updated_at 
-			  FROM users WHERE api_token = $1`
+			  FROM users 
+			  WHERE api_token_hash = $1 OR api_token = $2
+			  LIMIT 1`
 	
-	err := DB.QueryRow(query, token).Scan(
+	err := DB.QueryRow(query, tokenHash, token).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
@@ -111,8 +124,18 @@ func GetUserByToken(token string) (*models.User, error) {
 
 // UpdateUserToken 更新用户Token
 func UpdateUserToken(userID int64, newToken string) error {
-	query := `UPDATE users SET api_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`
-	_, err := DB.Exec(query, newToken, userID)
+	h := sha256.Sum256([]byte(newToken))
+	tokenHash := hex.EncodeToString(h[:])
+	// 兼容：同时更新 api_token（旧）与 api_token_hash（新）
+	query := `UPDATE users SET api_token = $1, api_token_hash = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`
+	_, err := DB.Exec(query, newToken, tokenHash, userID)
+	return err
+}
+
+// UpdateUserTokenHash 更新用户Token Hash（重写版）
+func UpdateUserTokenHash(userID int64, tokenHash string) error {
+	query := `UPDATE users SET api_token_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`
+	_, err := DB.Exec(query, tokenHash, userID)
 	return err
 }
 

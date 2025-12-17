@@ -90,13 +90,11 @@
                 const response = await fetch('/api/v1/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ username, email, password }),
                 });
                 const data = await response.json();
                 if (response.ok) {
-                    // 注册成功后自动登录：保存JWT并跳转
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
                     window.location.href = '/';
                 } else {
                     errorMessage.textContent = data.error || '注册失败';
@@ -108,9 +106,7 @@
             }
         }
 
-        if (localStorage.getItem('token')) {
-            window.location.href = '/';
-        }
+        // Cookie 模式：不使用 localStorage
     </script>
 </body>
 </html>

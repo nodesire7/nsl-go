@@ -16,7 +16,7 @@ import (
 // AuthMiddleware JWT或API Token认证中间件
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 跳过健康检查、注册、登录端点（仅用于API/页面可访问性）
+		// 跳过健康检查、注册、登录端点（页面和公开API）
 		if c.Request.URL.Path == "/health" || 
 		   c.Request.URL.Path == "/login" ||
 		   c.Request.URL.Path == "/register" ||
@@ -33,19 +33,24 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		
+		// 认证来源优先级：
+		// 1) Authorization: Bearer <token>（API Token 或 JWT）
+		// 2) Cookie: access_token（Web UI 登录）
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "缺少认证令牌",
-			})
+		token := ""
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		} else {
+			// Cookie JWT（HttpOnly）
+			if cookie, err := c.Cookie("access_token"); err == nil {
+				token = cookie
+			}
+		}
+
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少认证令牌"})
 			c.Abort()
 			return
-		}
-		
-		// 支持 Bearer token 格式
-		token := authHeader
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			token = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 		
 		// 先尝试JWT认证
@@ -59,15 +64,17 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		
-		// 尝试用户API Token认证
-		user, err := database.GetUserByToken(token)
-		if err == nil && user != nil {
-			// 用户Token认证成功
-			c.Set("user_id", user.ID)
-			c.Set("username", user.Username)
-			c.Set("role", user.Role)
-			c.Next()
-			return
+		// 尝试用户API Token认证（仅当显式通过 Authorization 传入时生效）
+		// 避免把 API token 放进 Cookie 触发 CSRF 风险。
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			user, err := database.GetUserByToken(token)
+			if err == nil && user != nil {
+				c.Set("user_id", user.ID)
+				c.Set("username", user.Username)
+				c.Set("role", user.Role)
+				c.Next()
+				return
+			}
 		}
 		
 		// 注意：不再允许 API_TOKEN 作为“超级管理员通行证”绕过所有权限。

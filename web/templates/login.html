@@ -122,16 +122,13 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'include',
                     body: JSON.stringify({ username, password }),
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // 保存token
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    
                     // 跳转到主页
                     window.location.href = '/';
                 } else {
@@ -145,10 +142,7 @@
             }
         }
         
-        // 如果已登录，重定向到主页
-        if (localStorage.getItem('token')) {
-            window.location.href = '/';
-        }
+        // Cookie 模式：不使用 localStorage
     </script>
 </body>
 </html>

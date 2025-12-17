@@ -126,8 +126,9 @@
 创建 `.env` 文件：
 
 ```env
-# API配置
-API_TOKEN=your-secret-api-token-here
+# 鉴权配置（必需）
+# Cookie 登录鉴权的 JWT 签名密钥（建议 openssl rand -hex 32）
+JWT_SECRET=your-jwt-secret-here
 BASE_URL=http://localhost:9110
 
 # PostgreSQL配置
@@ -165,7 +166,7 @@ SERVER_MODE=release
 docker-compose up -d
 
 # 或手动启动
-go run cmd/server/main.go
+go run cmd/api/main.go
 ```
 
 ## 生产环境部署
@@ -180,7 +181,7 @@ docker pull nodesire7/nsl-go:latest
 docker run -d \
   --name nsl-go \
   -p 9110:9110 \
-  -e API_TOKEN=your-token \
+  -e JWT_SECRET=your-jwt-secret \
   -e DB_HOST=postgres \
   -e DB_PASSWORD=password \
   nodesire7/nsl-go:latest

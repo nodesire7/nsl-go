@@ -28,7 +28,7 @@ jobs:
       run: |
         go mod tidy
         go mod download
-        go build -o nsl-go -ldflags="-s -w" ./cmd/server
+        go build -o nsl-go -ldflags="-s -w" ./cmd/api
     
     - name: Create release archive
       run: |
@@ -152,19 +152,19 @@ jobs:
         go mod tidy
         go mod download
         # Linux AMD64
-        GOOS=linux GOARCH=amd64 go build -o nsl-go-linux-amd64 -ldflags="-s -w" ./cmd/server
+        GOOS=linux GOARCH=amd64 go build -o nsl-go-linux-amd64 -ldflags="-s -w" ./cmd/api
         
         # Linux ARM64
-        GOOS=linux GOARCH=arm64 go build -o nsl-go-linux-arm64 -ldflags="-s -w" ./cmd/server
+        GOOS=linux GOARCH=arm64 go build -o nsl-go-linux-arm64 -ldflags="-s -w" ./cmd/api
         
         # Windows AMD64
-        GOOS=windows GOARCH=amd64 go build -o nsl-go-windows-amd64.exe -ldflags="-s -w" ./cmd/server
+        GOOS=windows GOARCH=amd64 go build -o nsl-go-windows-amd64.exe -ldflags="-s -w" ./cmd/api
         
         # macOS AMD64
-        GOOS=darwin GOARCH=amd64 go build -o nsl-go-darwin-amd64 -ldflags="-s -w" ./cmd/server
+        GOOS=darwin GOARCH=amd64 go build -o nsl-go-darwin-amd64 -ldflags="-s -w" ./cmd/api
         
         # macOS ARM64
-        GOOS=darwin GOARCH=arm64 go build -o nsl-go-darwin-arm64 -ldflags="-s -w" ./cmd/server
+        GOOS=darwin GOARCH=arm64 go build -o nsl-go-darwin-arm64 -ldflags="-s -w" ./cmd/api
     
     - name: Create release archives
       run: |

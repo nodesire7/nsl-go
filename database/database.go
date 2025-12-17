@@ -63,6 +63,9 @@ func Migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_api_token ON users(api_token)`,
+		// 为重写版预留：token hash（逐步迁移）
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS api_token_hash VARCHAR(64)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_api_token_hash_unique ON users(api_token_hash) WHERE api_token_hash IS NOT NULL`,
 		
 		// 创建域名表
 		`CREATE TABLE IF NOT EXISTS domains (
@@ -181,16 +184,9 @@ func InitAdminUser() error {
 		return fmt.Errorf("创建admin用户失败: %w", err)
 	}
 	
-	// 输出admin用户信息到日志
-	log.Println("==========================================")
-	log.Println("✅ Admin用户已创建")
-	log.Println("==========================================")
-	log.Printf("用户名: admin")
-	log.Printf("密码: %s", randomPassword)
-	log.Printf("API Token: %s", apiToken)
-	log.Println("==========================================")
-	log.Println("⚠️  请妥善保管以上信息，建议首次登录后修改密码")
-	log.Println("==========================================")
+	// 安全提示：默认不在日志中输出明文密码/token，避免日志泄漏导致全站失守
+	log.Println("✅ Admin用户已创建（出于安全原因，不在日志中输出明文密码/Token）")
+	log.Println("👉 请使用管理工具重置/查看：admin密码可通过 cmd/admin 工具重置")
 	
 	return nil
 }

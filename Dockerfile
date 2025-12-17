@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # 构建应用
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o short-link ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o nsl-go ./cmd/api
 
 # 运行阶段
 FROM alpine:latest
@@ -28,14 +28,14 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 
 # 从构建阶段复制二进制文件
-COPY --from=builder /app/short-link .
+COPY --from=builder /app/nsl-go .
 
 # 复制静态文件
 COPY --from=builder /app/web ./web
 
 # 暴露端口
-EXPOSE 8080
+EXPOSE 9110
 
 # 运行应用
-CMD ["./short-link"]
+CMD ["./nsl-go"]
 

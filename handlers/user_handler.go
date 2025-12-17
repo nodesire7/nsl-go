@@ -9,6 +9,7 @@ import (
 	"short-link/models"
 	"short-link/services"
 	"short-link/utils"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,14 +52,21 @@ func (h *UserHandler) Register(c *gin.Context) {
 		})
 		return
 	}
+
+	// 下发 Cookie（HttpOnly）+ CSRF Cookie（双提交）
+	csrfToken, _ := utils.GenerateCSRFToken()
+	// access_token：HttpOnly
+	c.SetCookie("access_token", token, int((24*time.Hour).Seconds()), "/", "", false, true)
+	// csrf_token：前端可读
+	c.SetCookie("csrf_token", csrfToken, int((24*time.Hour).Seconds()), "/", "", false, false)
 	
 	c.JSON(http.StatusOK, models.LoginResponse{
-		Token: token,
+		Token: token, // 兼容：仍返回 token（API 客户端可用）
 		User: models.UserInfo{
 			ID:        user.ID,
 			Username:  user.Username,
 			Email:     user.Email,
-			APIToken:  user.APIToken,
+			APIToken:  user.APIToken, // 重写版建议仅在注册/重置时展示；现阶段保持兼容
 			Role:      user.Role,
 			MaxLinks:  user.MaxLinks,
 			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05"),
@@ -111,9 +119,14 @@ func (h *UserHandler) Login(c *gin.Context) {
 		})
 		return
 	}
+
+	// 下发 Cookie（HttpOnly）+ CSRF Cookie（双提交）
+	csrfToken, _ := utils.GenerateCSRFToken()
+	c.SetCookie("access_token", token, int((24*time.Hour).Seconds()), "/", "", false, true)
+	c.SetCookie("csrf_token", csrfToken, int((24*time.Hour).Seconds()), "/", "", false, false)
 	
 	c.JSON(http.StatusOK, models.LoginResponse{
-		Token: token,
+		Token: token, // 兼容：仍返回 token（API 客户端可用）
 		User: models.UserInfo{
 			ID:        user.ID,
 			Username:  user.Username,

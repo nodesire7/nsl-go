@@ -67,6 +67,7 @@ docker pull nodesire7/nsl-go:latest
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
 | `BASE_URL` | http://localhost:9110 | 服务基础URL |
+| `JWT_SECRET` | 必需 | **Cookie 登录鉴权**的JWT签名密钥（建议 `openssl rand -hex 32`） |
 | `DB_HOST` | localhost | PostgreSQL主机 |
 | `DB_PORT` | 5432 | PostgreSQL端口 |
 | `DB_USER` | postgres | 数据库用户 |

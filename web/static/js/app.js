@@ -4,12 +4,15 @@
  */
 
 const API_BASE = '/api/v1';
-// Web UI 使用登录后获取的 JWT（localStorage.token）
-const JWT_TOKEN = localStorage.getItem('token') || '';
 
-// 未登录则跳转到登录页
-if (!JWT_TOKEN) {
-    window.location.href = '/login';
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) return decodeURIComponent(match[2]);
+    return '';
+}
+
+function getCSRFToken() {
+    return getCookie('csrf_token');
 }
 
 let currentPage = 1;
@@ -40,14 +43,14 @@ async function loadLinks(page = 1) {
         }
 
         const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${JWT_TOKEN}`
-            }
+            credentials: 'include'
         });
 
-        if (!response.ok) {
-            throw new Error('加载失败');
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
         }
+        if (!response.ok) throw new Error('加载失败');
 
         const data = await response.json();
         displayLinks(data.links || []);
@@ -107,14 +110,14 @@ function displayPagination(data) {
 async function refreshStats() {
     try {
         const response = await fetch(`${API_BASE}/stats`, {
-            headers: {
-                'Authorization': `Bearer ${JWT_TOKEN}`
-            }
+            credentials: 'include'
         });
 
-        if (!response.ok) {
-            throw new Error('加载统计失败');
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
         }
+        if (!response.ok) throw new Error('加载统计失败');
 
         const data = await response.json();
         document.getElementById('totalLinks').textContent = data.total_links || 0;
@@ -149,10 +152,16 @@ async function createLink(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${JWT_TOKEN}`
+                'X-CSRF-Token': getCSRFToken()
             },
+            credentials: 'include',
             body: JSON.stringify(data)
         });
+
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
 
         if (!response.ok) {
             const error = await response.json();
@@ -182,9 +191,16 @@ async function deleteLink(code) {
         const response = await fetch(`${API_BASE}/links/${code}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${JWT_TOKEN}`
+                'X-CSRF-Token': getCSRFToken()
             }
+            ,
+            credentials: 'include'
         });
+
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
 
         if (!response.ok) {
             throw new Error('删除失败');
