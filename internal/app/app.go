@@ -11,6 +11,7 @@ import (
 	"short-link/config"
 	"short-link/database"
 	"short-link/handlers"
+	"short-link/internal/httpv2"
 	"short-link/middleware"
 	"short-link/services"
 	"short-link/utils"
@@ -153,6 +154,14 @@ func Run() error {
 			protected.GET("/settings", settingsHandler.GetSettings)
 			protected.PUT("/settings", settingsHandler.UpdateSettings)
 		}
+	}
+
+	// 挂载重写版 v2 路由（增量迁移，不影响 v1）
+	if v2, err := httpv2.New(); err != nil {
+		utils.LogWarn("v2模块初始化失败（已忽略，不影响v1）: %v", err)
+	} else {
+		defer v2.Close()
+		httpv2.RegisterRoutes(router, v2)
 	}
 
 	// 启动服务器
