@@ -11,6 +11,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net"
+	"net/url"
+	"short-link/cache"
 	"short-link/internal/repo"
 	"short-link/models"
 	"short-link/utils"
@@ -26,6 +29,7 @@ type LinkService struct {
 	domainRepo   *repo.DomainRepo
 	settingsRepo *repo.SettingsRepo
 	userRepo     *repo.UserRepo
+	accessLogRepo *repo.AccessLogRepo
 
 	// env 默认值（DB settings 可覆盖）
 	minCodeLen int
@@ -34,12 +38,13 @@ type LinkService struct {
 }
 
 // NewLinkService 创建 LinkService
-func NewLinkService(baseURL string, minCodeLen int, maxCodeLen int, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, settingsRepo *repo.SettingsRepo, userRepo *repo.UserRepo) *LinkService {
+func NewLinkService(baseURL string, minCodeLen int, maxCodeLen int, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, settingsRepo *repo.SettingsRepo, userRepo *repo.UserRepo, accessLogRepo *repo.AccessLogRepo) *LinkService {
 	return &LinkService{
 		linkRepo:     linkRepo,
 		domainRepo:   domainRepo,
 		settingsRepo: settingsRepo,
 		userRepo:     userRepo,
+		accessLogRepo: accessLogRepo,
 		minCodeLen:   minCodeLen,
 		maxCodeLen:   maxCodeLen,
 		baseURL:      baseURL,
@@ -136,6 +141,163 @@ func (s *LinkService) BuildShortURL(domain *models.Domain, code string) string {
 	}
 	base = strings.TrimRight(base, "/")
 	return base + "/" + code
+}
+
+func normalizeHost(hostport string) (string, string) {
+	hostport = strings.TrimSpace(strings.ToLower(hostport))
+	if hostport == "" {
+		return "", ""
+	}
+	host := hostport
+	if h, _, err := net.SplitHostPort(hostport); err == nil && h != "" {
+		host = h
+	}
+	return hostport, host
+}
+
+func baseURLHosts(baseURL string) (string, string) {
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Host == "" {
+		return normalizeHost(baseURL)
+	}
+	return normalizeHost(u.Host)
+}
+
+// ResolveDomainForHost 根据请求 Host 解析 domain 记录
+// - 若 host 匹配 BaseURL 的 host，则返回系统默认域名（user_id=0, is_default=true）
+// - 否则按 domains.domain 精确匹配（允许带/不带端口）
+func (s *LinkService) ResolveDomainForHost(ctx context.Context, hostport string) (*models.Domain, error) {
+	if s.domainRepo == nil {
+		return nil, repo.ErrNotFound
+	}
+
+	reqHostport, reqHost := normalizeHost(hostport)
+	baseHostport, baseHost := baseURLHosts(s.baseURL)
+
+	// BaseURL Host 命中：系统默认域名
+	if reqHostport != "" && (reqHostport == baseHostport || reqHost == baseHost) {
+		return s.domainRepo.GetDefaultDomain(ctx, 0)
+	}
+
+	// 自定义域名：先尝试带端口/不带端口
+	candidates := map[string]struct{}{}
+	if reqHostport != "" {
+		candidates[reqHostport] = struct{}{}
+	}
+	if reqHost != "" {
+		candidates[reqHost] = struct{}{}
+	}
+
+	var found []models.Domain
+	for name := range candidates {
+		ds, err := s.domainRepo.FindActiveDomainsByName(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		found = append(found, ds...)
+	}
+
+	if len(found) == 0 {
+		return nil, repo.ErrNotFound
+	}
+	if len(found) > 1 {
+		// 域名配置冲突：同一 host 对应多条记录（需要管理员清理/加唯一约束）
+		return nil, fmt.Errorf("域名配置冲突：%s 对应多条记录", reqHostport)
+	}
+	return &found[0], nil
+}
+
+// RedirectLink v2 重定向解析（含热点缓存 + 点击/日志写入）
+func (s *LinkService) RedirectLink(ctx context.Context, hostport string, code string, ip string, userAgent string, referer string) (string, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return "", repo.ErrNotFound
+	}
+
+	// 解析域名（优先）
+	domain, _ := s.ResolveDomainForHost(ctx, hostport)
+	domainID := int64(0)
+	if domain != nil {
+		domainID = domain.ID
+	}
+
+	cacheKey := fmt.Sprintf("redir:%d:%s", domainID, code)
+	if cache.RedisClient != nil {
+		if v, err := cache.Get(cacheKey); err == nil && v != "" {
+			parts := strings.SplitN(v, "|", 2)
+			if len(parts) == 2 {
+				// best-effort 写入统计
+				_ = s.linkRepo.IncrementClickCount(ctx, parseInt64(parts[0]))
+				if s.accessLogRepo != nil {
+					_ = s.accessLogRepo.CreateAccessLog(ctx, &models.AccessLog{
+						LinkID:    parseInt64(parts[0]),
+						IP:        ip,
+						UserAgent: userAgent,
+						Referer:   referer,
+						CreatedAt: time.Now(),
+					})
+				}
+				return parts[1], nil
+			}
+		}
+	}
+
+	// 主查：domain + code
+	if domain != nil {
+		l, err := s.linkRepo.GetLinkByCode(ctx, code, domain.ID)
+		if err == nil {
+			_ = s.linkRepo.IncrementClickCount(ctx, l.ID)
+			if s.accessLogRepo != nil {
+				_ = s.accessLogRepo.CreateAccessLog(ctx, &models.AccessLog{
+					LinkID:    l.ID,
+					IP:        ip,
+					UserAgent: userAgent,
+					Referer:   referer,
+					CreatedAt: time.Now(),
+				})
+			}
+			if cache.RedisClient != nil {
+				_ = cache.Set(cacheKey, fmt.Sprintf("%d|%s", l.ID, l.OriginalURL), time.Hour)
+			}
+			return l.OriginalURL, nil
+		}
+	}
+
+	// 兼容回退：host 未识别时，若全库只有一个 code 命中则允许跳转，否则 404
+	ls, err := s.linkRepo.GetLinkByCodeAnyDomain(ctx, code, 2)
+	if err != nil {
+		return "", err
+	}
+	if len(ls) != 1 {
+		return "", repo.ErrNotFound
+	}
+	l := ls[0]
+	_ = s.linkRepo.IncrementClickCount(ctx, l.ID)
+	if s.accessLogRepo != nil {
+		_ = s.accessLogRepo.CreateAccessLog(ctx, &models.AccessLog{
+			LinkID:    l.ID,
+			IP:        ip,
+			UserAgent: userAgent,
+			Referer:   referer,
+			CreatedAt: time.Now(),
+		})
+	}
+	if cache.RedisClient != nil {
+		_ = cache.Set(fmt.Sprintf("redir:%d:%s", l.DomainID, code), fmt.Sprintf("%d|%s", l.ID, l.OriginalURL), time.Hour)
+	}
+	return l.OriginalURL, nil
+}
+
+func parseInt64(s string) int64 {
+	var n int64
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if ch < '0' || ch > '9' {
+			return 0
+		}
+		n = n*10 + int64(ch-'0')
+	}
+	return n
 }
 
 // CreateLink 创建短链（v2）

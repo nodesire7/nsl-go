@@ -100,9 +100,6 @@ func Run() error {
 		})
 	})
 
-	// 重定向路由（不需要认证）
-	router.GET("/:code", linkHandler.RedirectLink)
-
 	// Web UI 路由
 	router.GET("/login", func(c *gin.Context) {
 		c.HTML(200, "login.html", gin.H{"title": "登录 - 短链接管理系统"})
@@ -157,11 +154,19 @@ func Run() error {
 	}
 
 	// 挂载重写版 v2 路由（增量迁移，不影响 v1）
+	v2Enabled := false
 	if v2, err := httpv2.New(); err != nil {
 		utils.LogWarn("v2模块初始化失败（已忽略，不影响v1）: %v", err)
 	} else {
 		defer v2.Close()
 		httpv2.RegisterRoutes(router, v2)
+		v2Enabled = true
+	}
+
+	// 重定向路由（不需要认证）
+	// 优先使用重写版（已修复多域名 code 冲突风险），否则回退 legacy
+	if !v2Enabled {
+		router.GET("/:code", linkHandler.RedirectLink)
 	}
 
 	// 启动服务器

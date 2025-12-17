@@ -29,10 +29,12 @@ type Module struct {
 	DomainRepo  *repo.DomainRepo
 	SettingsRepo *repo.SettingsRepo
 	LinkRepo    *repo.LinkRepo
+	AccessLogRepo *repo.AccessLogRepo
 	UserService *service.UserService
 	LinkService *service.LinkService
 	AuthHandler *handlers.AuthHandler
 	LinkHandler *handlers.LinkHandler
+	RedirectHandler *handlers.RedirectHandler
 }
 
 // New 创建 v2 模块
@@ -53,12 +55,14 @@ func New() (*Module, error) {
 	domainRepo := repo.NewDomainRepo(pool)
 	settingsRepo := repo.NewSettingsRepo(pool)
 	linkRepo := repo.NewLinkRepo(pool)
+	accessLogRepo := repo.NewAccessLogRepo(pool)
 
 	userService := service.NewUserService(userRepo)
-	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo)
+	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo, accessLogRepo)
 
 	authHandler := handlers.NewAuthHandler(cfg, userService)
 	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo)
+	redirectHandler := handlers.NewRedirectHandler(linkService)
 
 	return &Module{
 		Cfg:         cfg,
@@ -67,10 +71,12 @@ func New() (*Module, error) {
 		DomainRepo:  domainRepo,
 		SettingsRepo: settingsRepo,
 		LinkRepo:    linkRepo,
+		AccessLogRepo: accessLogRepo,
 		UserService: userService,
 		LinkService: linkService,
 		AuthHandler: authHandler,
 		LinkHandler: linkHandler,
+		RedirectHandler: redirectHandler,
 	}, nil
 }
 
@@ -84,6 +90,9 @@ func (m *Module) Close() {
 // RegisterRoutes 注册 v2 路由
 func RegisterRoutes(router *gin.Engine, m *Module) {
 	utils.LogInfo("挂载重写版路由：/api/v2")
+
+	// 重写版 redirect（替换 legacy 的任意域名查询，修复多域名 code 冲突风险）
+	router.GET("/:code", m.RedirectHandler.Redirect)
 
 	api := router.Group("/api/v2")
 	{

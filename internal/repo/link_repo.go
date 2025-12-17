@@ -63,6 +63,77 @@ func (r *LinkRepo) CreateLink(ctx context.Context, link *models.Link) error {
 	return nil
 }
 
+// GetLinkByCode 根据 code + domain_id 获取链接
+func (r *LinkRepo) GetLinkByCode(ctx context.Context, code string, domainID int64) (*models.Link, error) {
+	l := &models.Link{}
+	query := `
+		SELECT id, user_id, domain_id, code, original_url, title, hash, qr_code, click_count, created_at, updated_at
+		FROM links
+		WHERE code = $1 AND domain_id = $2
+		LIMIT 1
+	`
+	err := r.pool.QueryRow(ctx, query, code, domainID).Scan(
+		&l.ID,
+		&l.UserID,
+		&l.DomainID,
+		&l.Code,
+		&l.OriginalURL,
+		&l.Title,
+		&l.Hash,
+		&l.QRCode,
+		&l.ClickCount,
+		&l.CreatedAt,
+		&l.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get link by code failed: %w", err)
+	}
+	return l, nil
+}
+
+// GetLinkByCodeAnyDomain 兼容：按 code 查询任意域名（最多返回 limit 条，用于歧义判断）
+func (r *LinkRepo) GetLinkByCodeAnyDomain(ctx context.Context, code string, limit int) ([]models.Link, error) {
+	if limit <= 0 {
+		limit = 2
+	}
+	query := `
+		SELECT id, user_id, domain_id, code, original_url, title, hash, qr_code, click_count, created_at, updated_at
+		FROM links
+		WHERE code = $1
+		LIMIT $2
+	`
+	rows, err := r.pool.Query(ctx, query, code, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get link by code any domain failed: %w", err)
+	}
+	defer rows.Close()
+
+	var out []models.Link
+	for rows.Next() {
+		var l models.Link
+		if err := rows.Scan(
+			&l.ID,
+			&l.UserID,
+			&l.DomainID,
+			&l.Code,
+			&l.OriginalURL,
+			&l.Title,
+			&l.Hash,
+			&l.QRCode,
+			&l.ClickCount,
+			&l.CreatedAt,
+			&l.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan link failed: %w", err)
+		}
+		out = append(out, l)
+	}
+	return out, nil
+}
+
 // GetLinkByHashUserDomain 幂等检查：按 (hash, user_id, domain_id)
 func (r *LinkRepo) GetLinkByHashUserDomain(ctx context.Context, hash string, userID int64, domainID int64) (*models.Link, error) {
 	l := &models.Link{}

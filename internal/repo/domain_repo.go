@@ -24,6 +24,26 @@ func NewDomainRepo(pool *db.Pool) *DomainRepo {
 	return &DomainRepo{pool: pool}
 }
 
+// FindActiveDomainsByName 按 domain 字段查找启用的域名（可能返回多条：代表配置冲突）
+func (r *DomainRepo) FindActiveDomainsByName(ctx context.Context, name string) ([]models.Domain, error) {
+	query := `SELECT id, user_id, domain, is_default, is_active, created_at, updated_at FROM domains WHERE domain = $1 AND is_active = true`
+	rows, err := r.pool.Query(ctx, query, name)
+	if err != nil {
+		return nil, fmt.Errorf("find domains failed: %w", err)
+	}
+	defer rows.Close()
+
+	var out []models.Domain
+	for rows.Next() {
+		var d models.Domain
+		if err := rows.Scan(&d.ID, &d.UserID, &d.Domain, &d.IsDefault, &d.IsActive, &d.CreatedAt, &d.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan domain failed: %w", err)
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
 // GetDomainByID 根据ID获取域名
 func (r *DomainRepo) GetDomainByID(ctx context.Context, domainID int64) (*models.Domain, error) {
 	d := &models.Domain{}
