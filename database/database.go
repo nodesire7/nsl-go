@@ -52,6 +52,11 @@ func InitDB() error {
 		return fmt.Errorf("数据库迁移失败: %w", err)
 	}
 
+	// 安全回填：将历史明文 api_token 转为 hash，并清空明文字段
+	if err = BackfillUserTokenHashes(); err != nil {
+		return fmt.Errorf("token hash 回填失败: %w", err)
+	}
+
 	return nil
 }
 
@@ -64,7 +69,7 @@ func Migrate() error {
 			username VARCHAR(50) UNIQUE NOT NULL,
 			email VARCHAR(255) UNIQUE NOT NULL,
 			password VARCHAR(255) NOT NULL,
-			api_token VARCHAR(255) UNIQUE NOT NULL,
+			api_token VARCHAR(255), -- 安全基线：不再明文存储/不再要求唯一与非空（仅保留 hash）
 			role VARCHAR(20) DEFAULT 'user',
 			max_links INTEGER DEFAULT 10,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -77,6 +82,10 @@ func Migrate() error {
 		// 为重写版预留：token hash（逐步迁移）
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS api_token_hash VARCHAR(64)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_api_token_hash_unique ON users(api_token_hash) WHERE api_token_hash IS NOT NULL`,
+		// 安全基线：不再要求明文 token（允许 NULL，移除唯一约束，后续将停止写入明文）
+		`ALTER TABLE users ALTER COLUMN api_token DROP NOT NULL`,
+		`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_api_token_key`,
+		`DROP INDEX IF EXISTS idx_users_api_token`,
 		
 		// 创建域名表
 		`CREATE TABLE IF NOT EXISTS domains (

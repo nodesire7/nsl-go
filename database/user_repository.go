@@ -31,7 +31,7 @@ func CreateUser(user *models.User) error {
 		user.Username,
 		user.Email,
 		user.Password,
-		user.APIToken, // 兼容字段：现阶段仍写入（后续重写版会移除明文存储）
+		nil, // 安全：不再写入明文 api_token，仅写入 hash
 		tokenHash,
 		user.Role,
 		user.MaxLinks,
@@ -45,7 +45,7 @@ func CreateUser(user *models.User) error {
 // GetUserByUsername 根据用户名获取用户
 func GetUserByUsername(username string) (*models.User, error) {
 	user := &models.User{}
-	query := `SELECT id, username, email, password, api_token, role, max_links, created_at, updated_at 
+	query := `SELECT id, username, email, password, COALESCE(api_token, ''), role, max_links, created_at, updated_at 
 			  FROM users WHERE username = $1`
 	
 	err := DB.QueryRow(query, username).Scan(
@@ -70,7 +70,7 @@ func GetUserByUsername(username string) (*models.User, error) {
 // GetUserByID 根据ID获取用户
 func GetUserByID(userID int64) (*models.User, error) {
 	user := &models.User{}
-	query := `SELECT id, username, email, password, api_token, role, max_links, created_at, updated_at 
+	query := `SELECT id, username, email, password, COALESCE(api_token, ''), role, max_links, created_at, updated_at 
 			  FROM users WHERE id = $1`
 	
 	err := DB.QueryRow(query, userID).Scan(
@@ -98,7 +98,7 @@ func GetUserByToken(token string) (*models.User, error) {
 	h := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(h[:])
 	// 兼容：优先用 api_token_hash 匹配（重写版），否则回退 api_token 明文（旧数据）
-	query := `SELECT id, username, email, password, api_token, role, max_links, created_at, updated_at 
+	query := `SELECT id, username, email, password, COALESCE(api_token, ''), role, max_links, created_at, updated_at 
 			  FROM users 
 			  WHERE api_token_hash = $1 OR api_token = $2
 			  LIMIT 1`
@@ -126,9 +126,9 @@ func GetUserByToken(token string) (*models.User, error) {
 func UpdateUserToken(userID int64, newToken string) error {
 	h := sha256.Sum256([]byte(newToken))
 	tokenHash := hex.EncodeToString(h[:])
-	// 兼容：同时更新 api_token（旧）与 api_token_hash（新）
-	query := `UPDATE users SET api_token = $1, api_token_hash = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`
-	_, err := DB.Exec(query, newToken, tokenHash, userID)
+	// 安全：仅更新 hash，明文置空
+	query := `UPDATE users SET api_token = NULL, api_token_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`
+	_, err := DB.Exec(query, tokenHash, userID)
 	return err
 }
 

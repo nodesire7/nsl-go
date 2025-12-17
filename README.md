@@ -281,8 +281,10 @@ curl -X GET "http://localhost:9110/api/v2/links?page=1&limit=20" \
   - 增量重写架构：`internal/config + internal/db(pgxpool) + internal/repo + internal/service + internal/httpv2`
 
 - **部分完成（兼容期）**
-  - **API Token 存储**：已写入 `api_token_hash` 并优先按 hash 匹配，但仍兼容保留 `api_token` 明文列（后续会移除明文存储）
   - **统计写入**：当前仍同步写点击数/访问日志（后续会改为 worker 异步聚合）
+
+- **已完成（新增）**
+  - **API Token 存储**：已停止写入 `users.api_token` 明文字段，历史数据会回填 `api_token_hash` 并清空明文列；鉴权优先按 hash 匹配
 
 - **未完成 / 待推进**
   - RBAC 权限点（目前仅 `admin/user` 角色字段）

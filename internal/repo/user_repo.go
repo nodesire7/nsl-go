@@ -53,7 +53,7 @@ func (r *UserRepo) CreateUser(ctx context.Context, u *models.User) error {
 		u.Username,
 		u.Email,
 		u.Password,
-		u.APIToken, // 兼容字段：现阶段仍写入（后续将移除明文存储）
+		nil, // 安全：不再写入明文 api_token，仅写入 hash
 		tokenHash,
 		u.Role,
 		u.MaxLinks,
@@ -89,7 +89,7 @@ func (r *UserRepo) CheckEmailExists(ctx context.Context, email string) (bool, er
 // GetUserByUsername 根据用户名获取用户
 func (r *UserRepo) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	u := &models.User{}
-	query := `SELECT id, username, email, password, api_token, role, max_links, created_at, updated_at FROM users WHERE username = $1`
+	query := `SELECT id, username, email, password, COALESCE(api_token, ''), role, max_links, created_at, updated_at FROM users WHERE username = $1`
 	err := r.pool.QueryRow(ctx, query, username).Scan(
 		&u.ID,
 		&u.Username,
@@ -113,7 +113,7 @@ func (r *UserRepo) GetUserByUsername(ctx context.Context, username string) (*mod
 // GetUserByID 根据ID获取用户
 func (r *UserRepo) GetUserByID(ctx context.Context, userID int64) (*models.User, error) {
 	u := &models.User{}
-	query := `SELECT id, username, email, password, api_token, role, max_links, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, username, email, password, COALESCE(api_token, ''), role, max_links, created_at, updated_at FROM users WHERE id = $1`
 	err := r.pool.QueryRow(ctx, query, userID).Scan(
 		&u.ID,
 		&u.Username,
@@ -139,7 +139,7 @@ func (r *UserRepo) GetUserByToken(ctx context.Context, token string) (*models.Us
 	u := &models.User{}
 	tokenHash := TokenHash(token)
 	query := `
-		SELECT id, username, email, password, api_token, role, max_links, created_at, updated_at
+		SELECT id, username, email, password, COALESCE(api_token, ''), role, max_links, created_at, updated_at
 		FROM users
 		WHERE api_token_hash = $1 OR api_token = $2
 		LIMIT 1
@@ -167,8 +167,8 @@ func (r *UserRepo) GetUserByToken(ctx context.Context, token string) (*models.Us
 // UpdateUserToken 更新用户 token（兼容同时更新明文与 hash）
 func (r *UserRepo) UpdateUserToken(ctx context.Context, userID int64, newToken string) error {
 	tokenHash := TokenHash(newToken)
-	query := `UPDATE users SET api_token = $1, api_token_hash = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`
-	ct, err := r.pool.Exec(ctx, query, newToken, tokenHash, userID)
+	query := `UPDATE users SET api_token = NULL, api_token_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`
+	ct, err := r.pool.Exec(ctx, query, tokenHash, userID)
 	if err != nil {
 		return fmt.Errorf("update user token failed: %w", err)
 	}
