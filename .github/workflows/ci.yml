@@ -11,6 +11,8 @@ env:
   IMAGE_NAME: nodesire77/nsl-go
   # 避免在 CI 环境中因 -mod=readonly 导致缺少 go.sum 条目而构建失败
   GOFLAGS: -mod=mod
+  # 强制使用当前安装的 Go 工具链，避免 go mod tidy 触发自动升级并改写 go.mod（会导致 Dockerfile 里的 go1.21 构建失败）
+  GOTOOLCHAIN: local
 
 jobs:
   build:
@@ -28,7 +30,6 @@ jobs:
 
     - name: Prepare Go modules
       run: |
-        go mod tidy
         go mod download
     
     - name: Run tests
@@ -158,7 +159,6 @@ jobs:
     
     - name: Prepare Go modules
       run: |
-        go mod tidy
         go mod download
 
     - name: Build binaries for multiple platforms
