@@ -165,6 +165,10 @@ SERVER_MODE=release
 # 使用Docker Compose（推荐）
 docker-compose up -d
 
+# 首次启动后，重置/生成 admin 密码（不会写入日志）
+make build-admin
+./bin/nsl-admin -action=reset-password
+
 # 或手动启动
 go run cmd/api/main.go
 ```

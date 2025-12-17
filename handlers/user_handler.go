@@ -135,7 +135,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 			ID:        user.ID,
 			Username:  user.Username,
 			Email:     user.Email,
-			APIToken:  user.APIToken,
+			APIToken:  "", // 安全：不在登录接口回传长期API Token（如需请调用 /api/v1/profile/token 生成新token）
 			Role:      user.Role,
 			MaxLinks:  user.MaxLinks,
 			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05"),
@@ -169,7 +169,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		ID:        user.ID,
 		Username:  user.Username,
 		Email:     user.Email,
-		APIToken:  user.APIToken,
+		APIToken:  "", // 安全：profile 不返回长期API Token
 		Role:      user.Role,
 		MaxLinks:  user.MaxLinks,
 		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05"),

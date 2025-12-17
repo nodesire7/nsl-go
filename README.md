@@ -36,11 +36,16 @@ docker-compose up -d
 ```
 
 **首次启动后**：
-1. 查看日志获取admin用户密码：
+1. 查看日志确认已创建 admin 用户：
    ```bash
    docker-compose logs app | grep "Admin用户已创建"
    ```
-2. 访问 `http://localhost:9110/login` 登录
+2. 出于安全原因，**不会在日志中打印明文密码/Token**。请使用管理工具生成/重置 admin 密码后登录：
+   ```bash
+   make build-admin
+   ./bin/nsl-admin -action=reset-password
+   ```
+3. 访问 `http://localhost:9110/login` 登录
 
 ### 手动安装
 
@@ -53,7 +58,11 @@ tar -xzf nsl-go-linux-amd64.tar.gz
 ```
 
 **首次启动后**：
-- 查看控制台输出，获取admin用户密码
+- 查看控制台输出确认已创建 admin 用户
+- 使用管理工具重置 admin 密码后登录：
+  ```bash
+  ./bin/nsl-admin -action=reset-password
+  ```
 - 访问 `http://localhost:9110/login` 登录
 
 ### Docker Hub
@@ -127,6 +136,7 @@ curl -X POST http://localhost:9110/api/v1/auth/register \
 ```
 
 ### 用户登录
+> 注意：登录接口不再返回长期 `api_token`。如需创建/轮换 API Token，请调用 `/api/v1/profile/token`。
 
 ```bash
 curl -X POST http://localhost:9110/api/v1/auth/login \
@@ -212,18 +222,10 @@ curl -X GET "http://localhost:9110/api/v1/links/search?q=example" \
 
 ### 自动创建Admin用户
 
-系统首次启动时会**自动创建admin用户**，密码会在日志中输出：
+系统首次启动时会**自动创建admin用户**。出于安全原因，日志中**不输出明文密码/Token**，请使用管理工具重置密码：
 
 ```
-==========================================
-✅ Admin用户已创建
-==========================================
-用户名: admin
-密码: [随机生成的16位密码]
-API Token: nsl_xxxxxxxxxxxxx
-==========================================
-⚠️  请妥善保管以上信息，建议首次登录后修改密码
-==========================================
+✅ Admin用户已创建（出于安全原因，不在日志中输出明文密码/Token）
 ```
 
 ### 重置Admin密码
@@ -273,7 +275,7 @@ go build -o bin\nsl-admin.exe ./cmd/admin
 
 **默认admin账户**：
 - 用户名：`admin`
-- 密码：首次启动时在日志中显示（随机生成）
+- 密码：请使用管理工具重置生成（不会写入日志）
 
 ### 管理面板
 

@@ -5,6 +5,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
 
@@ -25,6 +26,9 @@ type Config struct {
 	DBPassword string
 	DBName     string
 	DBSSLMode  string
+	DBMaxOpenConns int
+	DBMaxIdleConns int
+	DBConnMaxLifetimeMinutes int
 
 	// Meilisearch配置
 	MeiliHost string
@@ -63,6 +67,9 @@ func LoadConfig() *Config {
 		DBPassword:     getEnv("DB_PASSWORD", "postgres"),
 		DBName:         getEnv("DB_NAME", "shortlink"),
 		DBSSLMode:      getEnv("DB_SSLMODE", "disable"),
+		DBMaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 50),
+		DBMaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 25),
+		DBConnMaxLifetimeMinutes: getEnvAsInt("DB_CONN_MAX_LIFETIME_MINUTES", 30),
 		MeiliHost:      getEnv("MEILI_HOST", "http://localhost:7700"),
 		MeiliKey:       getEnv("MEILI_KEY", ""),
 		RedisHost:      getEnv("REDIS_HOST", ""),
@@ -72,6 +79,11 @@ func LoadConfig() *Config {
 		LogLevel:       getEnv("LOG_LEVEL", "INFO"),
 		ServerPort:     getEnvAsInt("SERVER_PORT", 9110),
 		ServerMode:     getEnv("SERVER_MODE", "release"),
+	}
+
+	// 重写版安全基线：JWT_SECRET 必须设置
+	if config.JWTSecret == "" {
+		log.Fatal("JWT_SECRET 环境变量未设置（建议 openssl rand -hex 32）")
 	}
 
 	// 注意：

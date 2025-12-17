@@ -29,6 +29,17 @@ func InitDB() error {
 		return fmt.Errorf("打开数据库连接失败: %w", err)
 	}
 
+	// 连接池参数（sql.DB 自带连接池）
+	if config.AppConfig.DBMaxOpenConns > 0 {
+		DB.SetMaxOpenConns(config.AppConfig.DBMaxOpenConns)
+	}
+	if config.AppConfig.DBMaxIdleConns > 0 {
+		DB.SetMaxIdleConns(config.AppConfig.DBMaxIdleConns)
+	}
+	if config.AppConfig.DBConnMaxLifetimeMinutes > 0 {
+		DB.SetConnMaxLifetime(time.Duration(config.AppConfig.DBConnMaxLifetimeMinutes) * time.Minute)
+	}
+
 	// 测试连接
 	if err = DB.Ping(); err != nil {
 		return fmt.Errorf("数据库连接测试失败: %w", err)
