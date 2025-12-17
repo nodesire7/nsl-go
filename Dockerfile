@@ -9,14 +9,17 @@ WORKDIR /app
 # - ca-certificates：Alpine 默认可能缺失 CA，导致 go mod download TLS 失败
 RUN apk add --no-cache git ca-certificates && update-ca-certificates
 
-# 复制go mod文件
-COPY go.mod go.sum ./
+# 复制 go.mod（go.sum 可能不存在：允许在容器内通过 tidy 生成）
+COPY go.mod ./
 
-# 下载依赖
+# 先下载依赖（加速缓存命中；如无 go.sum 也可正常运行）
 RUN go mod download
 
 # 复制源代码
 COPY . .
+
+# 确保依赖与校验和完整（容器内生成/更新 go.sum）
+RUN go mod tidy
 
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o nsl-go ./cmd/api
