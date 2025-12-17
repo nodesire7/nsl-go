@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 短链接管理系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .register-container {
+            max-width: 420px;
+            margin: 80px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .register-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display:block; margin-bottom:6px; color:#555; font-weight:500; }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus { outline:none; border-color:#4CAF50; }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 6px;
+        }
+        .btn-primary:hover { background:#45a049; }
+        .error-message { color:#f44336; margin-top:10px; text-align:center; display:none; }
+        .login-link { text-align:center; margin-top:16px; color:#666; }
+        .login-link a { color:#4CAF50; text-decoration:none; }
+        .login-link a:hover { text-decoration:underline; }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1>🔗 注册</h1>
+            <p>创建一个新账户（默认最多10条链接）</p>
+        </div>
+
+        <form id="registerForm" onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required minlength="3" maxlength="50" placeholder="3-50字符">
+            </div>
+            <div class="form-group">
+                <label for="email">邮箱</label>
+                <input type="email" id="email" name="email" required placeholder="name@example.com">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required minlength="6" placeholder="至少6位">
+            </div>
+            <div class="error-message" id="errorMessage"></div>
+            <button type="submit" class="btn-primary">注册</button>
+        </form>
+
+        <div class="login-link">
+            已有账户？<a href="/login">返回登录</a>
+        </div>
+    </div>
+
+    <script>
+        async function handleRegister(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    // 注册成功后自动登录：保存JWT并跳转
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/';
+                } else {
+                    errorMessage.textContent = data.error || '注册失败';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (e) {
+                errorMessage.textContent = '网络错误，请稍后重试';
+                errorMessage.style.display = 'block';
+            }
+        }
+
+        if (localStorage.getItem('token')) {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
+
+

@@ -84,7 +84,7 @@ docker pull nodesire7/nsl-go:latest
 
 ### 认证方式
 
-系统支持三种认证方式：
+系统支持两种认证方式：
 
 1. **用户API Token**（推荐，永久有效）：
 ```
@@ -96,10 +96,7 @@ Authorization: Bearer nsl_xxxxxxxxxxxxx
 Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
-3. **系统API Token**（管理员）：
-```
-Authorization: Bearer YOUR_API_TOKEN
-```
+> 说明：旧版曾支持 `API_TOKEN` 作为“系统通行证”，存在高风险（泄漏即全站失守），重写版将移除该设计。
 
 ### 用户注册
 
@@ -236,26 +233,26 @@ API Token: nsl_xxxxxxxxxxxxx
 # 编译管理工具
 make build-admin
 # 或
-go build -o nsl-admin ./cmd/admin
+go build -o bin/nsl-admin ./cmd/admin
 
 # 随机生成新密码（推荐）
-./nsl-admin -action=reset-password
+./bin/nsl-admin -action=reset-password
 
 # 指定新密码
-./nsl-admin -action=reset-password -password=MyNewPassword123
+./bin/nsl-admin -action=reset-password -password=MyNewPassword123
 
 # 查看admin用户信息
-./nsl-admin -action=show-info
+./bin/nsl-admin -action=show-info
 ```
 
 **Windows用户**：
 ```powershell
 # 编译
-go build -o nsl-admin.exe ./cmd/admin
+go build -o bin\nsl-admin.exe ./cmd/admin
 
 # 使用
-.\nsl-admin.exe -action=reset-password
-.\nsl-admin.exe -action=show-info
+.\bin\nsl-admin.exe -action=reset-password
+.\bin\nsl-admin.exe -action=show-info
 ```
 
 ### 登录页面

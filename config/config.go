@@ -5,7 +5,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
 
@@ -17,6 +16,7 @@ type Config struct {
 	// API配置
 	APIToken string
 	BaseURL  string
+	JWTSecret string
 
 	// 数据库配置
 	DBHost     string
@@ -56,6 +56,7 @@ func LoadConfig() *Config {
 	config := &Config{
 		APIToken:      getEnv("API_TOKEN", ""),
 		BaseURL:       getEnv("BASE_URL", "http://localhost:9110"),
+		JWTSecret:     getEnv("JWT_SECRET", ""),
 		DBHost:         getEnv("DB_HOST", "localhost"),
 		DBPort:         getEnvAsInt("DB_PORT", 5432),
 		DBUser:         getEnv("DB_USER", "postgres"),
@@ -73,10 +74,9 @@ func LoadConfig() *Config {
 		ServerMode:     getEnv("SERVER_MODE", "release"),
 	}
 
-	// 验证必需配置
-	if config.APIToken == "" {
-		log.Fatal("API_TOKEN 环境变量未设置")
-	}
+	// 注意：
+	// - API_TOKEN 仅用于兼容旧方式/内部用途（不建议当作超级管理员通行证）
+	// - JWT_SECRET 建议在生产环境设置为强随机值（32字节以上）
 
 	AppConfig = config
 	return config

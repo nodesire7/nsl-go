@@ -5,7 +5,10 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"log"
 	"short-link/config"
 	"time"
 
@@ -24,12 +27,22 @@ type Claims struct {
 
 // InitJWT 初始化JWT密钥
 func InitJWT() {
-	// 使用API_TOKEN作为JWT密钥，如果没有则生成一个
-	if config.AppConfig.APIToken != "" {
-		jwtSecret = []byte(config.AppConfig.APIToken)
-	} else {
-		jwtSecret = []byte("default-secret-key-change-in-production")
+	// 使用独立的 JWT_SECRET，避免与 API_TOKEN 耦合、避免硬编码默认密钥
+	if config.AppConfig != nil && config.AppConfig.JWTSecret != "" {
+		jwtSecret = []byte(config.AppConfig.JWTSecret)
+		return
 	}
+
+	// 未配置则生成临时密钥（仅保证可用性；重启后旧JWT会失效）
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		// 极端兜底：使用固定字符串，但强烈警告
+		jwtSecret = []byte("unsafe-fallback-jwt-secret")
+		log.Println("⚠️ JWT_SECRET 未配置且随机生成失败：正在使用不安全的兜底密钥，请尽快设置 JWT_SECRET")
+		return
+	}
+	jwtSecret = []byte(hex.EncodeToString(bytes))
+	log.Println("⚠️ JWT_SECRET 未配置：已生成临时JWT密钥（重启后JWT失效），生产环境请设置 JWT_SECRET")
 }
 
 // GenerateToken 生成JWT token

@@ -4,10 +4,12 @@
  */
 
 const API_BASE = '/api/v1';
-const API_TOKEN = prompt('请输入API Token:') || localStorage.getItem('api_token') || '';
+// Web UI 使用登录后获取的 JWT（localStorage.token）
+const JWT_TOKEN = localStorage.getItem('token') || '';
 
-if (API_TOKEN) {
-    localStorage.setItem('api_token', API_TOKEN);
+// 未登录则跳转到登录页
+if (!JWT_TOKEN) {
+    window.location.href = '/login';
 }
 
 let currentPage = 1;
@@ -39,7 +41,7 @@ async function loadLinks(page = 1) {
 
         const response = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${API_TOKEN}`
+                'Authorization': `Bearer ${JWT_TOKEN}`
             }
         });
 
@@ -106,7 +108,7 @@ async function refreshStats() {
     try {
         const response = await fetch(`${API_BASE}/stats`, {
             headers: {
-                'Authorization': `Bearer ${API_TOKEN}`
+                'Authorization': `Bearer ${JWT_TOKEN}`
             }
         });
 
@@ -147,7 +149,7 @@ async function createLink(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_TOKEN}`
+                'Authorization': `Bearer ${JWT_TOKEN}`
             },
             body: JSON.stringify(data)
         });
@@ -180,7 +182,7 @@ async function deleteLink(code) {
         const response = await fetch(`${API_BASE}/links/${code}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${API_TOKEN}`
+                'Authorization': `Bearer ${JWT_TOKEN}`
             }
         });
 

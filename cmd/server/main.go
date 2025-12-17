@@ -84,7 +84,6 @@ func main() {
 	// 中间件
 	router.Use(middleware.LoggerMiddleware())
 	router.Use(middleware.RateLimitMiddleware())
-	router.Use(middleware.AuthMiddleware())
 	
 	// 静态文件服务（用于Web UI）
 	router.Static("/static", "./web/static")
@@ -101,7 +100,17 @@ func main() {
 	// 重定向路由（不需要认证）
 	router.GET("/:code", linkHandler.RedirectLink)
 	
-	// Web UI路由
+	// Web UI路由（页面本身不强制要求Authorization头；由前端携带JWT访问API）
+	router.GET("/login", func(c *gin.Context) {
+		c.HTML(200, "login.html", gin.H{
+			"title": "登录 - 短链接管理系统",
+		})
+	})
+	router.GET("/register", func(c *gin.Context) {
+		c.HTML(200, "register.html", gin.H{
+			"title": "注册 - 短链接管理系统",
+		})
+	})
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(200, "index.html", gin.H{
 			"title": "短链接管理系统",
@@ -118,29 +127,34 @@ func main() {
 			auth.POST("/login", userHandler.Login)
 		}
 		
-		// 用户相关（需要JWT认证）
-		api.GET("/profile", userHandler.GetProfile)
-		api.POST("/profile/token", userHandler.UpdateToken) // 更新用户Token
-		
-		// 域名管理
-		api.POST("/domains", domainHandler.CreateDomain)
-		api.GET("/domains", domainHandler.GetDomains)
-		api.DELETE("/domains/:id", domainHandler.DeleteDomain)
-		api.PUT("/domains/:id/default", domainHandler.SetDefaultDomain)
-		
-		// 链接管理
-		api.POST("/links", linkHandler.CreateLink)
-		api.GET("/links", linkHandler.GetLinks)
-		api.GET("/links/search", linkHandler.SearchLinks)
-		api.GET("/links/:code", linkHandler.GetLinkInfo)
-		api.DELETE("/links/:code", linkHandler.DeleteLink)
-		
-		// 统计
-		api.GET("/stats", statsHandler.GetStats)
-		
-		// 配置管理
-		api.GET("/settings", settingsHandler.GetSettings)
-		api.PUT("/settings", settingsHandler.UpdateSettings)
+		// 需要认证的API
+		protected := api.Group("")
+		protected.Use(middleware.AuthMiddleware())
+		{
+			// 用户相关
+			protected.GET("/profile", userHandler.GetProfile)
+			protected.POST("/profile/token", userHandler.UpdateToken) // 更新用户Token
+			
+			// 域名管理
+			protected.POST("/domains", domainHandler.CreateDomain)
+			protected.GET("/domains", domainHandler.GetDomains)
+			protected.DELETE("/domains/:id", domainHandler.DeleteDomain)
+			protected.PUT("/domains/:id/default", domainHandler.SetDefaultDomain)
+			
+			// 链接管理
+			protected.POST("/links", linkHandler.CreateLink)
+			protected.GET("/links", linkHandler.GetLinks)
+			protected.GET("/links/search", linkHandler.SearchLinks)
+			protected.GET("/links/:code", linkHandler.GetLinkInfo)
+			protected.DELETE("/links/:code", linkHandler.DeleteLink)
+			
+			// 统计
+			protected.GET("/stats", statsHandler.GetStats)
+			
+			// 配置管理
+			protected.GET("/settings", settingsHandler.GetSettings)
+			protected.PUT("/settings", settingsHandler.UpdateSettings)
+		}
 	}
 	
 	// 启动服务器

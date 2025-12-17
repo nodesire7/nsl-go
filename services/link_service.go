@@ -5,11 +5,11 @@
 package services
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"log"
-	"math/rand"
 	"short-link/config"
 	"short-link/database"
 	"short-link/models"
@@ -38,10 +38,23 @@ func (s *LinkService) GenerateHash(url string) string {
 
 // GenerateRandomCode 生成随机代码
 func (s *LinkService) GenerateRandomCode(length int) string {
-	rand.Seed(time.Now().UnixNano())
+	// 使用 crypto/rand 生成不可预测随机数，避免 math/rand 可预测/重复 Seed 的安全隐患
 	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
+	for i := 0; i < length; i++ {
+		// 采用拒绝采样避免取模偏差：接受 [0, 248)（62*4）范围
+		for {
+			var one [1]byte
+			if _, err := rand.Read(one[:]); err != nil {
+				// 兜底：极少发生，退化为时间哈希（仍然保证可用性）
+				h := sha256.Sum256([]byte(fmt.Sprintf("%d:%d", time.Now().UnixNano(), i)))
+				b[i] = charset[int(h[0])%len(charset)]
+				break
+			}
+			if one[0] < 248 {
+				b[i] = charset[int(one[0])%len(charset)]
+				break
+			}
+		}
 	}
 	return string(b)
 }

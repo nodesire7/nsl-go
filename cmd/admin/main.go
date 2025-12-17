@@ -6,13 +6,13 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"short-link/config"
 	"short-link/database"
+	"time"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 	
 	// 加载配置
-	cfg := config.LoadConfig()
+	_ = config.LoadConfig()
 	
 	// 初始化数据库
 	if err := database.InitDB(); err != nil {
