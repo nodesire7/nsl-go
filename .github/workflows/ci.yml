@@ -9,6 +9,8 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: nodesire77/nsl-go
+  # 避免在 CI 环境中因 -mod=readonly 导致缺少 go.sum 条目而构建失败
+  GOFLAGS: -mod=mod
 
 jobs:
   build:
@@ -23,6 +25,11 @@ jobs:
       with:
         go-version: '1.21'
         cache: false
+
+    - name: Prepare Go modules
+      run: |
+        go mod tidy
+        go mod download
     
     - name: Run tests
       run: |
@@ -30,8 +37,6 @@ jobs:
     
     - name: Build Go binary
       run: |
-        go mod tidy
-        go mod download
         go build -o nsl-go -ldflags="-s -w" ./cmd/api
     
     - name: Create release archive
@@ -151,10 +156,13 @@ jobs:
         go-version: '1.21'
         cache: false
     
-    - name: Build binaries for multiple platforms
+    - name: Prepare Go modules
       run: |
         go mod tidy
         go mod download
+
+    - name: Build binaries for multiple platforms
+      run: |
         # Linux AMD64
         GOOS=linux GOARCH=amd64 go build -o nsl-go-linux-amd64 -ldflags="-s -w" ./cmd/api
         
