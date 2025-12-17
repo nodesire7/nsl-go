@@ -5,7 +5,9 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # 安装必要的包
-RUN apk add --no-cache git
+# - git：部分依赖可能需要走 VCS 拉取
+# - ca-certificates：Alpine 默认可能缺失 CA，导致 go mod download TLS 失败
+RUN apk add --no-cache git ca-certificates && update-ca-certificates
 
 # 复制go mod文件
 COPY go.mod go.sum ./
