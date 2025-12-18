@@ -267,4 +267,56 @@ func (r *LinkRepo) IncrementClickCount(ctx context.Context, linkID int64) error 
 	return nil
 }
 
+// GetLinkStats 获取全局统计信息
+func (r *LinkRepo) GetLinkStats(ctx context.Context) (*models.LinkStats, error) {
+	stats := &models.LinkStats{}
+
+	// 总链接数
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM links`).Scan(&stats.TotalLinks); err != nil {
+		return nil, fmt.Errorf("count links failed: %w", err)
+	}
+
+	// 总点击数
+	if err := r.pool.QueryRow(ctx, `SELECT COALESCE(SUM(click_count), 0) FROM links`).Scan(&stats.TotalClicks); err != nil {
+		return nil, fmt.Errorf("sum click_count failed: %w", err)
+	}
+
+	// 今日点击数（通过访问日志）
+	today := time.Now().Format("2006-01-02")
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM access_logs WHERE DATE(created_at) = $1`, today).Scan(&stats.TodayClicks); err != nil {
+		return nil, fmt.Errorf("count today clicks failed: %w", err)
+	}
+
+	// 热门链接（前10）
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, code, original_url, title, hash, click_count, created_at, updated_at
+		FROM links
+		ORDER BY click_count DESC
+		LIMIT 10
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query top links failed: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var l models.Link
+		if err := rows.Scan(
+			&l.ID,
+			&l.Code,
+			&l.OriginalURL,
+			&l.Title,
+			&l.Hash,
+			&l.ClickCount,
+			&l.CreatedAt,
+			&l.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan top link failed: %w", err)
+		}
+		stats.TopLinks = append(stats.TopLinks, l)
+	}
+
+	return stats, nil
+}
+
 

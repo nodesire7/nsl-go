@@ -25,11 +25,18 @@ type LinkHandler struct {
 	linkService *service.LinkService
 	linkRepo    *repo.LinkRepo
 	domainRepo  *repo.DomainRepo
+	searchService *service.SearchService
 }
 
 // NewLinkHandler 创建 LinkHandler
-func NewLinkHandler(cfg *appcfg.Config, linkService *service.LinkService, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo) *LinkHandler {
-	return &LinkHandler{cfg: cfg, linkService: linkService, linkRepo: linkRepo, domainRepo: domainRepo}
+func NewLinkHandler(cfg *appcfg.Config, linkService *service.LinkService, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, searchService *service.SearchService) *LinkHandler {
+	return &LinkHandler{
+		cfg:           cfg,
+		linkService:   linkService,
+		linkRepo:      linkRepo,
+		domainRepo:    domainRepo,
+		searchService: searchService,
+	}
 }
 
 // CreateLink 创建短链接
@@ -126,6 +133,78 @@ func (h *LinkHandler) GetLinks(c *gin.Context) {
 		Page:       page,
 		Limit:      limit,
 		TotalPages: totalPages,
+	})
+}
+
+// SearchLinks 搜索链接
+func (h *LinkHandler) SearchLinks(c *gin.Context) {
+	if h.searchService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未启用"})
+		return
+	}
+
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "搜索关键词不能为空"})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 200 {
+		limit = 20
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	result, err := h.searchService.SearchLinks(ctx, query, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "搜索失败: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// DeleteLink 删除链接
+func (h *LinkHandler) DeleteLink(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	code := c.Param("code")
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// 先查出链接，验证归属
+	links, err := h.linkRepo.GetUserLinks(ctx, userID, 1, 1000)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除链接失败: " + err.Error()})
+		return
+	}
+	var target *models.Link
+	for _, l := range links {
+		if l.Code == code {
+			ll := l
+			target = &ll
+			break
+		}
+	}
+	if target == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "链接不存在或无权限删除"})
+		return
+	}
+
+	// 从 DB 删除（按 user + domain + code）
+	if err := h.linkRepo.DeleteUserLink(ctx, userID, target.DomainID, code); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除链接失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "链接已删除",
 	})
 }
 

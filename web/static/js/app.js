@@ -3,7 +3,8 @@
  * 处理UI交互和API调用
  */
 
-const API_BASE = '/api/v1';
+// v2 为当前唯一支持版本
+const API_BASE = '/api/v2';
 
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));

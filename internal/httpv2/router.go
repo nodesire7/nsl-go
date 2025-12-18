@@ -32,9 +32,11 @@ type Module struct {
 	AccessLogRepo *repo.AccessLogRepo
 	UserService *service.UserService
 	LinkService *service.LinkService
+	SearchService *service.SearchService
 	AuthHandler *handlers.AuthHandler
 	LinkHandler *handlers.LinkHandler
 	RedirectHandler *handlers.RedirectHandler
+	StatsHandler *handlers.StatsHandler
 }
 
 // New 创建 v2 模块
@@ -51,6 +53,11 @@ func New() (*Module, error) {
 		return nil, fmt.Errorf("初始化pgxpool失败: %w", err)
 	}
 
+	// 执行版本化迁移（internal/db/migrations/*.sql）
+	if err := db.Migrate(ctx, pool); err != nil {
+		return nil, fmt.Errorf("执行数据库迁移失败: %w", err)
+	}
+
 	userRepo := repo.NewUserRepo(pool)
 	domainRepo := repo.NewDomainRepo(pool)
 	settingsRepo := repo.NewSettingsRepo(pool)
@@ -59,10 +66,16 @@ func New() (*Module, error) {
 
 	userService := service.NewUserService(userRepo)
 	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo, accessLogRepo)
+	searchService, err := service.NewSearchService(cfg)
+	if err != nil {
+		utils.LogWarn("Meilisearch(v2) 初始化失败，搜索功能将不可用: %v", err)
+		searchService = nil
+	}
 
 	authHandler := handlers.NewAuthHandler(cfg, userService)
-	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo)
+	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo, searchService)
 	redirectHandler := handlers.NewRedirectHandler(linkService)
+	statsHandler := handlers.NewStatsHandler(linkService)
 
 	return &Module{
 		Cfg:         cfg,
@@ -74,9 +87,11 @@ func New() (*Module, error) {
 		AccessLogRepo: accessLogRepo,
 		UserService: userService,
 		LinkService: linkService,
+		SearchService: searchService,
 		AuthHandler: authHandler,
 		LinkHandler: linkHandler,
 		RedirectHandler: redirectHandler,
+		StatsHandler: statsHandler,
 	}, nil
 }
 
@@ -113,6 +128,11 @@ func RegisterRoutes(router *gin.Engine, m *Module) {
 			// 链接管理（v2 优先迁移核心能力：创建/列表）
 			protected.POST("/links", m.LinkHandler.CreateLink)
 			protected.GET("/links", m.LinkHandler.GetLinks)
+			protected.GET("/links/search", m.LinkHandler.SearchLinks)
+			protected.DELETE("/links/:code", m.LinkHandler.DeleteLink)
+
+			// 统计
+			protected.GET("/stats", m.StatsHandler.GetStats)
 		}
 	}
 }

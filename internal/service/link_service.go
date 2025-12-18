@@ -430,4 +430,12 @@ func (s *LinkService) CreateLink(ctx context.Context, userID int64, req *models.
 	}
 }
 
+// GetStats 获取全局统计信息
+func (s *LinkService) GetStats(ctx context.Context) (*models.LinkStats, error) {
+	if s.linkRepo == nil {
+		return nil, fmt.Errorf("link repo 未初始化")
+	}
+	return s.linkRepo.GetLinkStats(ctx)
+}
+
 
