@@ -34,6 +34,9 @@ func Run() error {
 		utils.LogWarn("Redis初始化失败，缓存功能将不可用: %v", err)
 	}
 	defer cache.CloseRedis()
+	
+	// 初始化限流器（滑动窗口 + 令牌桶）
+	middleware.InitRateLimiters()
 
 	// 设置Gin模式
 	if cfg.ServerMode == "release" {
