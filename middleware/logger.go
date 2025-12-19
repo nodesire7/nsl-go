@@ -5,7 +5,7 @@
 package middleware
 
 import (
-	"log"
+	"short-link/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +24,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 		status := c.Writer.Status()
 		clientIP := c.ClientIP()
 		
-		log.Printf("[%s] %s %s %d %v %s",
+		utils.LogInfo("[%s] %s %s %d %v %s",
 			method,
 			path,
 			clientIP,

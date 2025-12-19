@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"log"
 	icfg "short-link/internal/config"
 	"time"
 
@@ -39,11 +38,11 @@ func InitJWT() {
 	if _, err := rand.Read(bytes); err != nil {
 		// 极端兜底：使用固定字符串，但强烈警告
 		jwtSecret = []byte("unsafe-fallback-jwt-secret")
-		log.Println("⚠️ JWT_SECRET 未配置且随机生成失败：正在使用不安全的兜底密钥，请尽快设置 JWT_SECRET")
+		LogWarn("⚠️ JWT_SECRET 未配置且随机生成失败：正在使用不安全的兜底密钥，请尽快设置 JWT_SECRET")
 		return
 	}
 	jwtSecret = []byte(hex.EncodeToString(bytes))
-	log.Println("⚠️ JWT_SECRET 未配置：已生成临时JWT密钥（重启后JWT失效），生产环境请设置 JWT_SECRET")
+	LogWarn("⚠️ JWT_SECRET 未配置：已生成临时JWT密钥（重启后JWT失效），生产环境请设置 JWT_SECRET")
 }
 
 // GenerateToken 生成JWT token

@@ -128,8 +128,6 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ```
 或通过 Cookie：`Cookie: access_token=YOUR_JWT_TOKEN`
 
-> 说明：重写版已移除 `API_TOKEN` 作为“系统通行证”的设计，避免高风险（泄漏即全站失守）。
-
 ### 用户注册
 
 ```bash

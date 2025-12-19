@@ -7,8 +7,8 @@ package cache
 import (
 	"context"
 	"fmt"
-	"log"
 	icfg "short-link/internal/config"
+	"short-link/utils"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -22,13 +22,13 @@ func InitRedis() error {
 	// 从配置读取Redis地址，如果没有配置则不启用
 	cfg, err := icfg.Load()
 	if err != nil {
-		log.Printf("加载配置失败，Redis将不可用: %v", err)
+		utils.LogWarn("加载配置失败，Redis将不可用: %v", err)
 		return nil
 	}
 	
 	redisHost := cfg.RedisHost
 	if redisHost == "" {
-		log.Println("Redis未配置，缓存功能将不可用")
+		utils.LogWarn("Redis未配置，缓存功能将不可用")
 		return nil
 	}
 	
@@ -41,12 +41,12 @@ func InitRedis() error {
 	// 测试连接
 	_, err = RedisClient.Ping(Ctx).Result()
 	if err != nil {
-		log.Printf("Redis连接失败: %v，缓存功能将不可用", err)
+		utils.LogWarn("Redis连接失败: %v，缓存功能将不可用", err)
 		RedisClient = nil
 		return nil
 	}
 	
-	log.Println("Redis连接成功")
+	utils.LogInfo("Redis连接成功")
 	return nil
 }
 
