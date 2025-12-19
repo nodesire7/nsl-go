@@ -76,7 +76,7 @@ func setupTestDB(ctx context.Context) (*db.Pool, func(), error) {
 
 	cleanup := func() {
 		pool.Close()
-		pgContainer.Terminate(ctx)
+		_ = pgContainer.Terminate(ctx)
 	}
 
 	return pool, cleanup, nil
@@ -101,7 +101,7 @@ func setupTestRedis(ctx context.Context) (string, func(), error) {
 	}
 
 	cleanup := func() {
-		redisContainer.Terminate(ctx)
+		_ = redisContainer.Terminate(ctx)
 	}
 
 	return endpoint, cleanup, nil
@@ -130,6 +130,7 @@ func TestLinkService_CreateLink(t *testing.T) {
 		BaseURL:      "http://localhost:9110",
 		MinCodeLength: 6,
 		MaxCodeLength: 10,
+		JWTSecret:    "test-jwt-secret-for-integration-tests-only", // 测试用 JWT secret
 	}
 
 	// 创建 statsWorker（简化版，仅用于测试）
