@@ -178,4 +178,22 @@ func (r *UserRepo) UpdateUserToken(ctx context.Context, userID int64, newToken s
 	return nil
 }
 
+// UpdateUserPassword 更新用户密码
+func (r *UserRepo) UpdateUserPassword(ctx context.Context, username string, hashedPassword string) error {
+	query := `UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE username = $2`
+	ct, err := r.pool.Exec(ctx, query, hashedPassword, username)
+	if err != nil {
+		return fmt.Errorf("update user password failed: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GetAdminUser 获取admin用户
+func (r *UserRepo) GetAdminUser(ctx context.Context) (*models.User, error) {
+	return r.GetUserByUsername(ctx, "admin")
+}
+
 

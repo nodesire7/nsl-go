@@ -5,13 +5,15 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"short-link/config"
-	"short-link/database"
+	icfg "short-link/internal/config"
+	"short-link/internal/db"
+	"short-link/internal/repo"
 	"time"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,20 +25,33 @@ func main() {
 	flag.Parse()
 	
 	// 加载配置
-	_ = config.LoadConfig()
+	cfg, err := icfg.Load()
+	if err != nil {
+		log.Fatalf("加载配置失败: %v", err)
+	}
 	
 	// 初始化数据库
-	if err := database.InitDB(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	pool, err := db.New(ctx, cfg)
+	if err != nil {
 		log.Fatalf("数据库初始化失败: %v", err)
 	}
-	defer database.CloseDB()
+	defer pool.Close()
+	
+	// 执行迁移
+	if err := db.Migrate(ctx, pool); err != nil {
+		log.Fatalf("数据库迁移失败: %v", err)
+	}
+	
+	userRepo := repo.NewUserRepo(pool)
 	
 	// 执行操作
 	switch *action {
 	case "reset-password":
-		resetAdminPassword(*password)
+		resetAdminPassword(ctx, userRepo, *password)
 	case "show-info":
-		showAdminInfo()
+		showAdminInfo(ctx, userRepo)
 	case "":
 		showUsage()
 	default:
@@ -47,9 +62,9 @@ func main() {
 }
 
 // resetAdminPassword 重置admin密码
-func resetAdminPassword(newPassword string) {
+func resetAdminPassword(ctx context.Context, userRepo *repo.UserRepo, newPassword string) {
 	// 检查admin用户是否存在
-	admin, err := database.GetAdminUser()
+	admin, err := userRepo.GetAdminUser(ctx)
 	if err != nil {
 		log.Fatalf("获取admin用户失败: %v", err)
 	}
@@ -66,7 +81,7 @@ func resetAdminPassword(newPassword string) {
 	}
 	
 	// 更新密码
-	if err := database.UpdateUserPassword("admin", string(hashedPassword)); err != nil {
+	if err := userRepo.UpdateUserPassword(ctx, "admin", string(hashedPassword)); err != nil {
 		log.Fatalf("更新密码失败: %v", err)
 	}
 	
@@ -75,13 +90,13 @@ func resetAdminPassword(newPassword string) {
 	fmt.Println("==========================================")
 	fmt.Printf("用户名: %s\n", admin.Username)
 	fmt.Printf("新密码: %s\n", newPassword)
-	fmt.Printf("API Token: %s\n", admin.APIToken)
+	fmt.Printf("API Token: %s (已改为hash存储，不再显示明文)\n", admin.APIToken)
 	fmt.Println("==========================================")
 }
 
 // showAdminInfo 显示admin用户信息
-func showAdminInfo() {
-	admin, err := database.GetAdminUser()
+func showAdminInfo(ctx context.Context, userRepo *repo.UserRepo) {
+	admin, err := userRepo.GetAdminUser(ctx)
 	if err != nil {
 		log.Fatalf("获取admin用户失败: %v", err)
 	}
@@ -94,7 +109,7 @@ func showAdminInfo() {
 	fmt.Printf("邮箱: %s\n", admin.Email)
 	fmt.Printf("角色: %s\n", admin.Role)
 	fmt.Printf("最大链接数: %d (负数表示无限制)\n", admin.MaxLinks)
-	fmt.Printf("API Token: %s\n", admin.APIToken)
+	fmt.Printf("API Token: %s (已改为hash存储，不再显示明文)\n", admin.APIToken)
 	fmt.Printf("创建时间: %s\n", admin.CreatedAt.Format("2006-01-02 15:04:05"))
 	fmt.Println("==========================================")
 }

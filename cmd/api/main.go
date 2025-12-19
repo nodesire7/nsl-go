@@ -1,6 +1,6 @@
 /**
- * 重写版入口（暂与 cmd/server 共享 internal/app）
- * 后续会把 internal/app 逐步替换为 internal/* 分层架构实现。
+ * 重写版入口
+ * 使用 internal/* 分层架构实现
  */
 package main
 

@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"short-link/config"
+	icfg "short-link/internal/config"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -20,7 +20,13 @@ var Ctx = context.Background()
 // InitRedis 初始化Redis连接
 func InitRedis() error {
 	// 从配置读取Redis地址，如果没有配置则不启用
-	redisHost := config.AppConfig.RedisHost
+	cfg, err := icfg.Load()
+	if err != nil {
+		log.Printf("加载配置失败，Redis将不可用: %v", err)
+		return nil
+	}
+	
+	redisHost := cfg.RedisHost
 	if redisHost == "" {
 		log.Println("Redis未配置，缓存功能将不可用")
 		return nil
@@ -28,7 +34,7 @@ func InitRedis() error {
 	
 	RedisClient = redis.NewClient(&redis.Options{
 		Addr:     redisHost,
-		Password: config.AppConfig.RedisPassword,
+		Password: cfg.RedisPassword,
 		DB:       0,
 	})
 	

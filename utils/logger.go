@@ -7,7 +7,7 @@ package utils
 import (
 	"log"
 	"os"
-	"short-link/config"
+	icfg "short-link/internal/config"
 )
 
 var (
@@ -25,15 +25,18 @@ func InitLogger() {
 	WarnLogger = log.New(os.Stdout, "[WARN] ", flags)
 	
 	// 根据配置设置日志级别
-	switch config.AppConfig.LogLevel {
-	case "DEBUG":
-		// 可以添加调试日志
-	case "INFO":
-		// 默认级别
-	case "WARN":
-		// 只记录警告和错误
-	case "ERROR":
-		// 只记录错误
+	cfg, err := icfg.Load()
+	if err == nil {
+		switch cfg.LogLevel {
+		case "DEBUG":
+			// 可以添加调试日志
+		case "INFO":
+			// 默认级别
+		case "WARN":
+			// 只记录警告和错误
+		case "ERROR":
+			// 只记录错误
+		}
 	}
 }
 

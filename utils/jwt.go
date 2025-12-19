@@ -9,7 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"log"
-	"short-link/config"
+	icfg "short-link/internal/config"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -28,8 +28,9 @@ type Claims struct {
 // InitJWT 初始化JWT密钥
 func InitJWT() {
 	// 使用独立的 JWT_SECRET，避免与 API_TOKEN 耦合、避免硬编码默认密钥
-	if config.AppConfig != nil && config.AppConfig.JWTSecret != "" {
-		jwtSecret = []byte(config.AppConfig.JWTSecret)
+	cfg, err := icfg.Load()
+	if err == nil && cfg.JWTSecret != "" {
+		jwtSecret = []byte(cfg.JWTSecret)
 		return
 	}
 
