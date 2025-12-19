@@ -140,7 +140,7 @@ curl -X POST http://localhost:9110/api/v2/auth/register \
   }'
 ```
 
-**响应包含用户的API Token**（永久有效，仅返回一次）：
+**响应**（包含用户的API Token，永久有效，仅返回一次）：
 ```json
 {
   "token": "JWT_TOKEN",
@@ -155,7 +155,7 @@ curl -X POST http://localhost:9110/api/v2/auth/register \
 }
 ```
 
-> ⚠️ **重要**：`api_token` 仅在注册时返回一次，后续不会在登录/资料接口中返回（已改为 hash 存储）。
+> ⚠️ **重要**：`api_token` 仅在注册时返回一次，请妥善保存。后续登录/资料接口不会返回 `api_token`（已改为 hash 存储）。
 
 ### 用户登录
 > 注意：登录接口不再返回长期 `api_token`。如需创建/轮换 API Token，请调用 `/api/v2/profile/token`。

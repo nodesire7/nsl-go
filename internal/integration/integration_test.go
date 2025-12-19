@@ -61,7 +61,6 @@ func setupTestDB(ctx context.Context) (*db.Pool, func(), error) {
 		DBSSLMode:  "disable",
 		DBMaxConns: 5,
 	}
-
 	pool, err := db.New(ctx, cfg)
 	if err != nil {
 		pgContainer.Terminate(ctx)
