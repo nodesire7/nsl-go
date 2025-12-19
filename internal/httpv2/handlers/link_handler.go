@@ -26,16 +26,18 @@ type LinkHandler struct {
 	linkRepo    *repo.LinkRepo
 	domainRepo  *repo.DomainRepo
 	searchService *service.SearchService
+	auditLogRepo *repo.AuditLogRepo
 }
 
 // NewLinkHandler 创建 LinkHandler
-func NewLinkHandler(cfg *appcfg.Config, linkService *service.LinkService, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, searchService *service.SearchService) *LinkHandler {
+func NewLinkHandler(cfg *appcfg.Config, linkService *service.LinkService, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, searchService *service.SearchService, auditLogRepo *repo.AuditLogRepo) *LinkHandler {
 	return &LinkHandler{
 		cfg:           cfg,
 		linkService:   linkService,
 		linkRepo:      linkRepo,
 		domainRepo:    domainRepo,
 		searchService: searchService,
+		auditLogRepo:  auditLogRepo,
 	}
 }
 
@@ -172,6 +174,8 @@ func (h *LinkHandler) SearchLinks(c *gin.Context) {
 // DeleteLink 删除链接
 func (h *LinkHandler) DeleteLink(c *gin.Context) {
 	userID := c.GetInt64("user_id")
+	username := c.GetString("username")
+	role := c.GetString("role")
 	code := c.Param("code")
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
@@ -200,6 +204,27 @@ func (h *LinkHandler) DeleteLink(c *gin.Context) {
 	if err := h.linkRepo.DeleteUserLink(ctx, userID, target.DomainID, code); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除链接失败: " + err.Error()})
 		return
+	}
+
+	// 记录审计日志（敏感操作）
+	if h.auditLogRepo != nil {
+		linkID := target.ID
+		auditLog := &models.AuditLog{
+			UserID:       &userID,
+			Username:     username,
+			Action:       "link.delete",
+			ResourceType: "link",
+			ResourceID:   &linkID,
+			IP:           c.ClientIP(),
+			UserAgent:    c.GetHeader("User-Agent"),
+			Details: map[string]interface{}{
+				"code":      code,
+				"domain_id": target.DomainID,
+				"role":      role,
+			},
+			CreatedAt: time.Now(),
+		}
+		_ = h.auditLogRepo.CreateAuditLog(ctx, auditLog) // best-effort
 	}
 
 	c.JSON(http.StatusOK, gin.H{

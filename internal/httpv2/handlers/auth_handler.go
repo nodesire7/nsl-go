@@ -15,6 +15,7 @@ import (
 
 	"short-link/internal/auth"
 	appcfg "short-link/internal/config"
+	"short-link/internal/repo"
 	"short-link/internal/service"
 	"short-link/models"
 	"short-link/utils"
@@ -26,11 +27,12 @@ import (
 type AuthHandler struct {
 	cfg         *appcfg.Config
 	userService *service.UserService
+	auditLogRepo *repo.AuditLogRepo
 }
 
 // NewAuthHandler 创建 AuthHandler
-func NewAuthHandler(cfg *appcfg.Config, userService *service.UserService) *AuthHandler {
-	return &AuthHandler{cfg: cfg, userService: userService}
+func NewAuthHandler(cfg *appcfg.Config, userService *service.UserService, auditLogRepo *repo.AuditLogRepo) *AuthHandler {
+	return &AuthHandler{cfg: cfg, userService: userService, auditLogRepo: auditLogRepo}
 }
 
 // Register 注册
@@ -153,6 +155,8 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 // UpdateToken 轮换 API Token
 func (h *AuthHandler) UpdateToken(c *gin.Context) {
 	userID := c.GetInt64("user_id")
+	username := c.GetString("username")
+	role := c.GetString("role")
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
@@ -160,6 +164,24 @@ func (h *AuthHandler) UpdateToken(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新Token失败: " + err.Error()})
 		return
+	}
+
+	// 记录审计日志（敏感操作）
+	if h.auditLogRepo != nil {
+		auditLog := &models.AuditLog{
+			UserID:       &userID,
+			Username:     username,
+			Action:       "token.rotate",
+			ResourceType: "user",
+			ResourceID:   &userID,
+			IP:           c.ClientIP(),
+			UserAgent:    c.GetHeader("User-Agent"),
+			Details: map[string]interface{}{
+				"role": role,
+			},
+			CreatedAt: time.Now(),
+		}
+		_ = h.auditLogRepo.CreateAuditLog(ctx, auditLog) // best-effort
 	}
 
 	c.JSON(http.StatusOK, gin.H{

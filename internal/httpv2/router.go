@@ -65,6 +65,7 @@ func New() (*Module, error) {
 	settingsRepo := repo.NewSettingsRepo(pool)
 	linkRepo := repo.NewLinkRepo(pool)
 	accessLogRepo := repo.NewAccessLogRepo(pool)
+	auditLogRepo := repo.NewAuditLogRepo(pool)
 
 	// 初始化异步统计 Worker（批量大小50，等待间隔2秒）
 	statsWorker := jobs.NewStatsWorker(linkRepo, accessLogRepo, 50, 2*time.Second)
@@ -77,8 +78,8 @@ func New() (*Module, error) {
 		searchService = nil
 	}
 
-	authHandler := handlers.NewAuthHandler(cfg, userService)
-	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo, searchService)
+	authHandler := handlers.NewAuthHandler(cfg, userService, auditLogRepo)
+	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo, searchService, auditLogRepo)
 	redirectHandler := handlers.NewRedirectHandler(linkService)
 	statsHandler := handlers.NewStatsHandler(linkService)
 
