@@ -258,9 +258,12 @@ func (r *LinkRepo) CountLinksByUser(ctx context.Context, userID int64) (int64, e
 	return count, nil
 }
 
-// IncrementClickCount 增加点击计数（v2 预留）
-func (r *LinkRepo) IncrementClickCount(ctx context.Context, linkID int64) error {
-	_, err := r.pool.Exec(ctx, `UPDATE links SET click_count = click_count + 1, updated_at = $1 WHERE id = $2`, time.Now(), linkID)
+// IncrementClickCount 增加点击计数（支持批量计数）
+func (r *LinkRepo) IncrementClickCount(ctx context.Context, linkID int64, count int) error {
+	if count <= 0 {
+		count = 1
+	}
+	_, err := r.pool.Exec(ctx, `UPDATE links SET click_count = click_count + $1, updated_at = $2 WHERE id = $3`, count, time.Now(), linkID)
 	if err != nil {
 		return fmt.Errorf("increment click_count failed: %w", err)
 	}

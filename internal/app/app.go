@@ -78,6 +78,10 @@ func Run() error {
 		return err
 	} else {
 		defer v2.Close()
+		// 启动异步统计 Worker
+		if v2.StatsWorker != nil {
+			v2.StatsWorker.Start()
+		}
 		httpv2.RegisterRoutes(router, v2)
 	}
 

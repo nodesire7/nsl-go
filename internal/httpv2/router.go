@@ -13,6 +13,7 @@ import (
 	"short-link/internal/db"
 	"short-link/internal/httpv2/handlers"
 	v2mw "short-link/internal/httpv2/middleware"
+	"short-link/internal/jobs"
 	"short-link/internal/repo"
 	"short-link/internal/service"
 	"short-link/middleware"
@@ -30,6 +31,7 @@ type Module struct {
 	SettingsRepo *repo.SettingsRepo
 	LinkRepo    *repo.LinkRepo
 	AccessLogRepo *repo.AccessLogRepo
+	StatsWorker *jobs.StatsWorker
 	UserService *service.UserService
 	LinkService *service.LinkService
 	SearchService *service.SearchService
@@ -64,8 +66,11 @@ func New() (*Module, error) {
 	linkRepo := repo.NewLinkRepo(pool)
 	accessLogRepo := repo.NewAccessLogRepo(pool)
 
+	// 初始化异步统计 Worker（批量大小50，等待间隔2秒）
+	statsWorker := jobs.NewStatsWorker(linkRepo, accessLogRepo, 50, 2*time.Second)
+
 	userService := service.NewUserService(userRepo)
-	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo, accessLogRepo)
+	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo, accessLogRepo, statsWorker)
 	searchService, err := service.NewSearchService(cfg)
 	if err != nil {
 		utils.LogWarn("Meilisearch(v2) 初始化失败，搜索功能将不可用: %v", err)
@@ -85,6 +90,7 @@ func New() (*Module, error) {
 		SettingsRepo: settingsRepo,
 		LinkRepo:    linkRepo,
 		AccessLogRepo: accessLogRepo,
+		StatsWorker: statsWorker,
 		UserService: userService,
 		LinkService: linkService,
 		SearchService: searchService,
@@ -97,8 +103,13 @@ func New() (*Module, error) {
 
 // Close 关闭资源
 func (m *Module) Close() {
-	if m != nil && m.Pool != nil {
-		m.Pool.Close()
+	if m != nil {
+		if m.StatsWorker != nil {
+			m.StatsWorker.Stop()
+		}
+		if m.Pool != nil {
+			m.Pool.Close()
+		}
 	}
 }
 

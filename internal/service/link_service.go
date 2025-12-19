@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/url"
 	"short-link/cache"
+	"short-link/internal/jobs"
 	"short-link/internal/repo"
 	"short-link/models"
 	"short-link/utils"
@@ -30,6 +31,7 @@ type LinkService struct {
 	settingsRepo *repo.SettingsRepo
 	userRepo     *repo.UserRepo
 	accessLogRepo *repo.AccessLogRepo
+	statsWorker  *jobs.StatsWorker // 异步统计 worker
 
 	// env 默认值（DB settings 可覆盖）
 	minCodeLen int
@@ -38,13 +40,14 @@ type LinkService struct {
 }
 
 // NewLinkService 创建 LinkService
-func NewLinkService(baseURL string, minCodeLen int, maxCodeLen int, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, settingsRepo *repo.SettingsRepo, userRepo *repo.UserRepo, accessLogRepo *repo.AccessLogRepo) *LinkService {
+func NewLinkService(baseURL string, minCodeLen int, maxCodeLen int, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, settingsRepo *repo.SettingsRepo, userRepo *repo.UserRepo, accessLogRepo *repo.AccessLogRepo, statsWorker *jobs.StatsWorker) *LinkService {
 	return &LinkService{
 		linkRepo:     linkRepo,
 		domainRepo:   domainRepo,
 		settingsRepo: settingsRepo,
 		userRepo:     userRepo,
 		accessLogRepo: accessLogRepo,
+		statsWorker:  statsWorker,
 		minCodeLen:   minCodeLen,
 		maxCodeLen:   maxCodeLen,
 		baseURL:      baseURL,
@@ -226,16 +229,10 @@ func (s *LinkService) RedirectLink(ctx context.Context, hostport string, code st
 		if v, err := cache.Get(cacheKey); err == nil && v != "" {
 			parts := strings.SplitN(v, "|", 2)
 			if len(parts) == 2 {
-				// best-effort 写入统计
-				_ = s.linkRepo.IncrementClickCount(ctx, parseInt64(parts[0]))
-				if s.accessLogRepo != nil {
-					_ = s.accessLogRepo.CreateAccessLog(ctx, &models.AccessLog{
-						LinkID:    parseInt64(parts[0]),
-						IP:        ip,
-						UserAgent: userAgent,
-						Referer:   referer,
-						CreatedAt: time.Now(),
-					})
+				// 异步提交统计任务（非阻塞）
+				linkID := parseInt64(parts[0])
+				if s.statsWorker != nil {
+					s.statsWorker.Submit(linkID, ip, userAgent, referer)
 				}
 				return parts[1], nil
 			}
@@ -246,15 +243,9 @@ func (s *LinkService) RedirectLink(ctx context.Context, hostport string, code st
 	if domain != nil {
 		l, err := s.linkRepo.GetLinkByCode(ctx, code, domain.ID)
 		if err == nil {
-			_ = s.linkRepo.IncrementClickCount(ctx, l.ID)
-			if s.accessLogRepo != nil {
-				_ = s.accessLogRepo.CreateAccessLog(ctx, &models.AccessLog{
-					LinkID:    l.ID,
-					IP:        ip,
-					UserAgent: userAgent,
-					Referer:   referer,
-					CreatedAt: time.Now(),
-				})
+			// 异步提交统计任务（非阻塞）
+			if s.statsWorker != nil {
+				s.statsWorker.Submit(l.ID, ip, userAgent, referer)
 			}
 			if cache.RedisClient != nil {
 				_ = cache.Set(cacheKey, fmt.Sprintf("%d|%s", l.ID, l.OriginalURL), time.Hour)
@@ -272,15 +263,9 @@ func (s *LinkService) RedirectLink(ctx context.Context, hostport string, code st
 		return "", repo.ErrNotFound
 	}
 	l := ls[0]
-	_ = s.linkRepo.IncrementClickCount(ctx, l.ID)
-	if s.accessLogRepo != nil {
-		_ = s.accessLogRepo.CreateAccessLog(ctx, &models.AccessLog{
-			LinkID:    l.ID,
-			IP:        ip,
-			UserAgent: userAgent,
-			Referer:   referer,
-			CreatedAt: time.Now(),
-		})
+	// 异步提交统计任务（非阻塞）
+	if s.statsWorker != nil {
+		s.statsWorker.Submit(l.ID, ip, userAgent, referer)
 	}
 	if cache.RedisClient != nil {
 		_ = cache.Set(fmt.Sprintf("redir:%d:%s", l.DomainID, code), fmt.Sprintf("%d|%s", l.ID, l.OriginalURL), time.Hour)
