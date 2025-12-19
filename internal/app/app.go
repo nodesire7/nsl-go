@@ -14,6 +14,7 @@ import (
 	"short-link/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Run 启动 HTTP 服务
@@ -48,6 +49,7 @@ func Run() error {
 
 	// 中间件（全局）
 	router.Use(middleware.LoggerMiddleware())
+	router.Use(middleware.MetricsMiddleware()) // Prometheus 指标收集
 	router.Use(middleware.RateLimitMiddleware())
 	router.Use(middleware.SecurityHeadersMiddleware())
 	router.Use(middleware.RequestIDMiddleware())
@@ -62,6 +64,13 @@ func Run() error {
 			"status":  "ok",
 			"service": "short-link",
 		})
+	})
+
+	// Prometheus metrics 端点
+	router.GET("/metrics", func(c *gin.Context) {
+		// 使用 Prometheus 的 HTTP handler
+		handler := promhttp.Handler()
+		handler.ServeHTTP(c.Writer, c.Request)
 	})
 
 	// Web UI 路由

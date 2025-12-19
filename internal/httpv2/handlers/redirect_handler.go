@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"short-link/internal/metrics"
 	"short-link/internal/repo"
 	"short-link/internal/service"
 	"short-link/utils"
@@ -50,6 +51,10 @@ func (h *RedirectHandler) Redirect(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "重定向失败: " + err.Error()})
 		return
 	}
+
+	// 记录 metrics
+	metrics.LinksRedirectedTotal.Inc()
+
 	c.Redirect(http.StatusFound, url)
 }
 

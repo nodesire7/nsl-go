@@ -8,6 +8,7 @@ package middleware
 import (
 	"net/http"
 	"short-link/cache"
+	"short-link/internal/metrics"
 	"short-link/utils"
 	"time"
 
@@ -50,6 +51,7 @@ func RateLimitMiddleware() gin.HandlerFunc {
 			allowed, err = slidingWindowLimiter.Allow(key)
 			if err == nil {
 				if !allowed {
+					metrics.RateLimitRejectedTotal.Inc()
 					c.JSON(http.StatusTooManyRequests, gin.H{
 						"error": "请求过于频繁，请稍后再试",
 					})
@@ -66,6 +68,7 @@ func RateLimitMiddleware() gin.HandlerFunc {
 			allowed, err = tokenBucketLimiter.Allow(key)
 			if err == nil {
 				if !allowed {
+					metrics.RateLimitRejectedTotal.Inc()
 					c.JSON(http.StatusTooManyRequests, gin.H{
 						"error": "请求过于频繁，请稍后再试",
 					})
@@ -79,6 +82,7 @@ func RateLimitMiddleware() gin.HandlerFunc {
 		
 		// 最终降级到本地限流
 		if !localLimiter.Allow() {
+			metrics.RateLimitRejectedTotal.Inc()
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"error": "请求过于频繁，请稍后再试",
 			})

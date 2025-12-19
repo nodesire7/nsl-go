@@ -13,6 +13,7 @@ import (
 
 	appcfg "short-link/internal/config"
 	"short-link/internal/jobs"
+	"short-link/internal/metrics"
 	"short-link/internal/repo"
 	"short-link/internal/service"
 	"short-link/models"
@@ -62,6 +63,9 @@ func (h *LinkHandler) CreateLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// 记录 metrics
+	metrics.LinksCreatedTotal.Inc()
 
 	c.JSON(http.StatusOK, models.LinkResponse{
 		ID:          link.ID,
@@ -214,6 +218,9 @@ func (h *LinkHandler) DeleteLink(c *gin.Context) {
 	if h.meiliWorker != nil {
 		h.meiliWorker.Submit("delete", nil, target.ID)
 	}
+
+	// 记录 metrics
+	metrics.LinksDeletedTotal.Inc()
 
 	// 记录审计日志（敏感操作）
 	if h.auditLogRepo != nil {
