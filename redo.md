@@ -177,11 +177,27 @@ nsl-go/
 ## 7. 重写实施路线（建议）
 
 1) **先定安全与配置**：JWT_SECRET、token hash、移除超级通行证、审计日志
+   - ✅ JWT_SECRET、token hash、移除超级通行证
+   - ❌ 审计日志（管理员操作、敏感操作记录）
+
 2) **重写数据层**：pgxpool + 迁移版本化（migrate）
+   - ✅ 已完成
+
 3) **重写鉴权与RBAC**：web cookie + csrf / api token hash
+   - ✅ web cookie + csrf / api token hash
+   - ❌ RBAC 权限点（目前仅角色字段，缺少细粒度权限点）
+
 4) **重写短码生成与幂等**：并发安全 + DB 冲突重试
+   - ✅ 已完成
+
 5) **引入缓存与异步统计**：热点缓存 + worker
+   - ✅ 已完成
+
 6) **补齐测试与CI**：单测/集成测/安全扫描
+   - ❌ 集成测试（PG/Redis/Meili）
+   - ❌ `golangci-lint` / `gosec` 在 CI 中落地
+   - ❌ Metrics（Prometheus）
+   - ❌ Tracing
 
 ---
 

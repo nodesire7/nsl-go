@@ -178,7 +178,7 @@ func (h *LinkHandler) DeleteLink(c *gin.Context) {
 	defer cancel()
 
 	// 先查出链接，验证归属
-	links, err := h.linkRepo.GetUserLinks(ctx, userID, 1, 1000)
+	links, _, err := h.linkRepo.GetUserLinks(ctx, userID, 1, 1000)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除链接失败: " + err.Error()})
 		return
