@@ -39,7 +39,7 @@ func InitRedis() error {
 	})
 	
 	// 测试连接
-	_, err := RedisClient.Ping(Ctx).Result()
+	_, err = RedisClient.Ping(Ctx).Result()
 	if err != nil {
 		log.Printf("Redis连接失败: %v，缓存功能将不可用", err)
 		RedisClient = nil

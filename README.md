@@ -122,17 +122,18 @@ git push
 Authorization: Bearer nsl_xxxxxxxxxxxxx
 ```
 
-2. **JWT Token**（用于Web登录）：
+2. **JWT Token**（用于Web登录，HttpOnly Cookie）：
 ```
 Authorization: Bearer YOUR_JWT_TOKEN
 ```
+或通过 Cookie：`Cookie: access_token=YOUR_JWT_TOKEN`
 
-> 说明：旧版曾支持 `API_TOKEN` 作为“系统通行证”，存在高风险（泄漏即全站失守），重写版将移除该设计。
+> 说明：重写版已移除 `API_TOKEN` 作为“系统通行证”的设计，避免高风险（泄漏即全站失守）。
 
 ### 用户注册
 
 ```bash
-curl -X POST http://localhost:9110/api/v1/auth/register \
+curl -X POST http://localhost:9110/api/v2/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -141,7 +142,7 @@ curl -X POST http://localhost:9110/api/v1/auth/register \
   }'
 ```
 
-**响应包含用户的API Token**（永久有效）：
+**响应包含用户的API Token**（永久有效，仅返回一次）：
 ```json
 {
   "token": "JWT_TOKEN",
@@ -156,11 +157,13 @@ curl -X POST http://localhost:9110/api/v1/auth/register \
 }
 ```
 
+> ⚠️ **重要**：`api_token` 仅在注册时返回一次，后续不会在登录/资料接口中返回（已改为 hash 存储）。
+
 ### 用户登录
-> 注意：登录接口不再返回长期 `api_token`。如需创建/轮换 API Token，请调用 `/api/v1/profile/token`。
+> 注意：登录接口不再返回长期 `api_token`。如需创建/轮换 API Token，请调用 `/api/v2/profile/token`。
 
 ```bash
-curl -X POST http://localhost:9110/api/v1/auth/login \
+curl -X POST http://localhost:9110/api/v2/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -168,29 +171,32 @@ curl -X POST http://localhost:9110/api/v1/auth/login \
   }'
 ```
 
+**响应**（Web UI 会设置 HttpOnly Cookie）：
+```json
+{
+  "token": "JWT_TOKEN",
+  "user": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com",
+    "role": "user",
+    "max_links": 10
+  }
+}
+```
+
 ### 更新用户Token
 
 ```bash
-curl -X POST http://localhost:9110/api/v1/profile/token \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-### 创建域名
-
-```bash
-curl -X POST http://localhost:9110/api/v1/domains \
-  -H "Authorization: Bearer nsl_xxxxxxxxxxxxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "domain": "s.example.com",
-    "is_default": true
-  }'
+curl -X POST http://localhost:9110/api/v2/profile/token \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "X-CSRF-Token: YOUR_CSRF_TOKEN"
 ```
 
 ### 创建短链接
 
 ```bash
-curl -X POST http://localhost:9110/api/v1/links \
+curl -X POST http://localhost:9110/api/v2/links \
   -H "Authorization: Bearer nsl_xxxxxxxxxxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -204,7 +210,6 @@ curl -X POST http://localhost:9110/api/v1/links \
 **响应包含二维码**：
 ```json
 {
-  "success": true,
   "id": 1,
   "code": "custom",
   "short_url": "https://s.example.com/custom",
@@ -219,53 +224,29 @@ curl -X POST http://localhost:9110/api/v1/links \
 ### 获取链接列表
 
 ```bash
-curl -X GET "http://localhost:9110/api/v1/links?page=1&limit=20" \
+curl -X GET "http://localhost:9110/api/v2/links?page=1&limit=20" \
   -H "Authorization: Bearer nsl_xxxxxxxxxxxxx"
 ```
 
 ### 搜索链接
 
 ```bash
-curl -X GET "http://localhost:9110/api/v1/links/search?q=example" \
+curl -X GET "http://localhost:9110/api/v2/links/search?q=example" \
   -H "Authorization: Bearer nsl_xxxxxxxxxxxxx"
 ```
 
-## 🧪 v2 接口（重写版，逐步迁移）
-
-目前已迁移到 `/api/v2` 的能力：
-- **用户注册/登录/退出/资料/轮换 token**
-- **短链创建/列表**
-- **重定向 `/:code`**（按 Host 解析域名，带 Redis 热点缓存 + 访问日志写入）
-
-### v2 用户注册
+### 删除链接
 
 ```bash
-curl -X POST http://localhost:9110/api/v2/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-```
-
-### v2 创建短链
-
-```bash
-curl -X POST http://localhost:9110/api/v2/links \
+curl -X DELETE "http://localhost:9110/api/v2/links/custom" \
   -H "Authorization: Bearer nsl_xxxxxxxxxxxxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://www.example.com",
-    "title": "示例网站",
-    "domain_id": 1
-  }'
+  -H "X-CSRF-Token: YOUR_CSRF_TOKEN"
 ```
 
-### v2 获取短链列表
+### 获取统计信息
 
 ```bash
-curl -X GET "http://localhost:9110/api/v2/links?page=1&limit=20" \
+curl -X GET "http://localhost:9110/api/v2/stats" \
   -H "Authorization: Bearer nsl_xxxxxxxxxxxxx"
 ```
 
@@ -278,13 +259,10 @@ curl -X GET "http://localhost:9110/api/v2/links?page=1&limit=20" \
   - 幂等：按 `(user_id, domain_id, hash)` 粒度返回已有短链
   - Redis：热点重定向缓存（v2 已按域名隔离缓存 key）
   - 安全头、基础 SSRF 校验、请求 request_id、限流中间件
-  - 增量重写架构：`internal/config + internal/db(pgxpool) + internal/repo + internal/service + internal/httpv2`
-
-- **部分完成（兼容期）**
-  - **统计写入**：当前仍同步写点击数/访问日志（后续会改为 worker 异步聚合）
-
-- **已完成（新增）**
+  - 重写架构：`internal/config + internal/db(pgxpool) + internal/repo + internal/service + internal/httpv2`
+  - **统计写入异步化**：使用 `internal/jobs` worker 批量写入点击数/访问日志，跳转路径极速化
   - **API Token 存储**：已停止写入 `users.api_token` 明文字段，历史数据会回填 `api_token_hash` 并清空明文列；鉴权优先按 hash 匹配
+  - **V1 代码完全删除**：已彻底删除 legacy `config/`, `database/`, `services/`, `handlers/`, `cmd/server/`，全面迁移到 `internal/*` 架构
 
 - **未完成 / 待推进**
   - RBAC 权限点（目前仅 `admin/user` 角色字段）
@@ -297,9 +275,9 @@ curl -X GET "http://localhost:9110/api/v2/links?page=1&limit=20" \
 - **自动生成**: 用户注册时自动生成永久Token（格式：`nsl_xxxxxxxxxxxxx`）
 - **永久有效**: Token没有过期时间，除非：
   - 用户被删除
-  - 用户主动更新Token（通过 `/api/v1/profile/token` 接口）
+  - 用户主动更新Token（通过 `/api/v2/profile/token` 接口）
 - **用途**: 用于API调用，替代JWT Token进行长期访问
-- **安全**: Token存储在数据库中，建议定期更新
+- **安全**: Token 以 SHA256 hash 存储在数据库中，不再存储明文；建议定期更新
 
 ## 👤 Admin用户管理
 
