@@ -6,7 +6,6 @@ package jobs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
