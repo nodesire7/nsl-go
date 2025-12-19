@@ -433,6 +433,13 @@ func (s *LinkService) GetStats(ctx context.Context) (*models.LinkStats, error) {
 	return s.linkRepo.GetLinkStats(ctx)
 }
 
+// GetAggregatedStats 获取聚合统计信息（日/周/月、来源、UA 等维度）
+func (s *LinkService) GetAggregatedStats(ctx context.Context) (*models.AggregatedStats, error) {
+	// 这里需要 statsRepo，暂时返回基础统计
+	// TODO: 在 router 中注入 statsRepo
+	return nil, fmt.Errorf("聚合统计功能待实现")
+}
+
 // GetMeiliWorker 获取 Meilisearch Worker（用于启动/停止）
 func (s *LinkService) GetMeiliWorker() *jobs.MeiliWorker {
 	return s.meiliWorker

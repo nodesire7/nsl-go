@@ -68,6 +68,7 @@ func New() (*Module, error) {
 	accessLogRepo := repo.NewAccessLogRepo(pool)
 	auditLogRepo := repo.NewAuditLogRepo(pool)
 	permissionRepo := repo.NewPermissionRepo(pool)
+	statsRepo := repo.NewStatsRepo(pool)
 
 	// 初始化异步统计 Worker（批量大小50，等待间隔2秒）
 	statsWorker := jobs.NewStatsWorker(linkRepo, accessLogRepo, 50, 2*time.Second)
@@ -92,7 +93,7 @@ func New() (*Module, error) {
 	authHandler := handlers.NewAuthHandler(cfg, userService, auditLogRepo)
 	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo, searchService, auditLogRepo, meiliWorker)
 	redirectHandler := handlers.NewRedirectHandler(linkService)
-	statsHandler := handlers.NewStatsHandler(linkService)
+	statsHandler := handlers.NewStatsHandler(linkService, statsRepo, linkRepo)
 
 	return &Module{
 		Cfg:         cfg,
@@ -102,6 +103,7 @@ func New() (*Module, error) {
 		SettingsRepo: settingsRepo,
 		LinkRepo:    linkRepo,
 		AccessLogRepo: accessLogRepo,
+		StatsRepo:   statsRepo,
 		StatsWorker: statsWorker,
 		UserService: userService,
 		PermissionService: permissionService,
@@ -160,6 +162,7 @@ func RegisterRoutes(router *gin.Engine, m *Module) {
 
 			// 统计
 			protected.GET("/stats", v2mw.RequirePermission(m.PermissionService, "stats:view"), m.StatsHandler.GetStats)
+			protected.GET("/stats/aggregated", v2mw.RequirePermission(m.PermissionService, "stats:view"), m.StatsHandler.GetAggregatedStats)
 		}
 	}
 }
