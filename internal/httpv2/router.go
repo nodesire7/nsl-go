@@ -103,7 +103,6 @@ func New() (*Module, error) {
 		SettingsRepo: settingsRepo,
 		LinkRepo:    linkRepo,
 		AccessLogRepo: accessLogRepo,
-		StatsRepo:   statsRepo,
 		StatsWorker: statsWorker,
 		UserService: userService,
 		PermissionService: permissionService,

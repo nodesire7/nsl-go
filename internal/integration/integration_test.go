@@ -39,15 +39,22 @@ func setupTestDB(ctx context.Context) (*db.Pool, func(), error) {
 		return nil, nil, err
 	}
 
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	// 获取容器的主机和端口
+	host, err := pgContainer.Host(ctx)
 	if err != nil {
+		pgContainer.Terminate(ctx)
+		return nil, nil, err
+	}
+	port, err := pgContainer.MappedPort(ctx, "5432")
+	if err != nil {
+		pgContainer.Terminate(ctx)
 		return nil, nil, err
 	}
 
 	// 创建测试配置
 	cfg := &config.Config{
-		DBHost:     "localhost",
-		DBPort:     5432,
+		DBHost:     host,
+		DBPort:     port.Int(),
 		DBUser:     "testuser",
 		DBPassword: "testpass",
 		DBName:     "testdb",
@@ -55,8 +62,6 @@ func setupTestDB(ctx context.Context) (*db.Pool, func(), error) {
 		DBMaxConns: 5,
 	}
 
-	// 解析连接字符串并更新配置
-	// 这里简化处理，实际应该解析 connStr
 	pool, err := db.New(ctx, cfg)
 	if err != nil {
 		pgContainer.Terminate(ctx)
