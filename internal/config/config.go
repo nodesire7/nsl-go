@@ -40,6 +40,9 @@ type Config struct {
 	RedisPassword string
 	MeiliHost     string
 	MeiliKey      string
+
+	// Tracing（可选）
+	JaegerEndpoint string
 }
 
 // Load 从环境变量加载配置（重写版）
@@ -67,6 +70,7 @@ func Load() (*Config, error) {
 		RedisPassword: getenv("REDIS_PASSWORD", ""),
 		MeiliHost:     getenv("MEILI_HOST", "http://localhost:7700"),
 		MeiliKey:      getenv("MEILI_KEY", ""),
+		JaegerEndpoint: getenv("JAEGER_ENDPOINT", ""),
 	}
 
 	// 强制安全基线：生产/默认都要求 JWT_SECRET

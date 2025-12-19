@@ -10,11 +10,13 @@ import (
 	"short-link/cache"
 	icfg "short-link/internal/config"
 	"short-link/internal/httpv2"
+	"short-link/internal/tracing"
 	"short-link/middleware"
 	"short-link/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // Run 启动 HTTP 服务
@@ -39,6 +41,17 @@ func Run() error {
 	// 初始化限流器（滑动窗口 + 令牌桶）
 	middleware.InitRateLimiters()
 
+	// 初始化 Tracing（可选）
+	cleanupTracing, err := tracing.InitTracing(cfg)
+	if err != nil {
+		utils.LogWarn("Tracing 初始化失败: %v", err)
+	} else {
+		defer cleanupTracing()
+		if cfg.JaegerEndpoint != "" {
+			utils.LogInfo("Tracing 已启用（Jaeger: %s）", cfg.JaegerEndpoint)
+		}
+	}
+
 	// 设置Gin模式
 	if cfg.ServerMode == "release" {
 		gin.SetMode(gin.ReleaseMode)
@@ -50,6 +63,12 @@ func Run() error {
 	// 中间件（全局）
 	router.Use(middleware.LoggerMiddleware())
 	router.Use(middleware.MetricsMiddleware()) // Prometheus 指标收集
+	
+	// Tracing 中间件（如果启用）
+	if cfg.JaegerEndpoint != "" {
+		router.Use(otelgin.Middleware("nsl-go"))
+	}
+	
 	router.Use(middleware.RateLimitMiddleware())
 	router.Use(middleware.SecurityHeadersMiddleware())
 	router.Use(middleware.RequestIDMiddleware())
