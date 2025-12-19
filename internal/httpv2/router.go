@@ -33,6 +33,7 @@ type Module struct {
 	AccessLogRepo *repo.AccessLogRepo
 	StatsWorker *jobs.StatsWorker
 	UserService *service.UserService
+	PermissionService *service.PermissionService
 	LinkService *service.LinkService
 	SearchService *service.SearchService
 	AuthHandler *handlers.AuthHandler
@@ -66,11 +67,13 @@ func New() (*Module, error) {
 	linkRepo := repo.NewLinkRepo(pool)
 	accessLogRepo := repo.NewAccessLogRepo(pool)
 	auditLogRepo := repo.NewAuditLogRepo(pool)
+	permissionRepo := repo.NewPermissionRepo(pool)
 
 	// 初始化异步统计 Worker（批量大小50，等待间隔2秒）
 	statsWorker := jobs.NewStatsWorker(linkRepo, accessLogRepo, 50, 2*time.Second)
 
 	userService := service.NewUserService(userRepo)
+	permissionService := service.NewPermissionService(permissionRepo)
 	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo, accessLogRepo, statsWorker)
 	searchService, err := service.NewSearchService(cfg)
 	if err != nil {
@@ -93,6 +96,7 @@ func New() (*Module, error) {
 		AccessLogRepo: accessLogRepo,
 		StatsWorker: statsWorker,
 		UserService: userService,
+		PermissionService: permissionService,
 		LinkService: linkService,
 		SearchService: searchService,
 		AuthHandler: authHandler,
@@ -138,13 +142,13 @@ func RegisterRoutes(router *gin.Engine, m *Module) {
 			protected.POST("/profile/token", m.AuthHandler.UpdateToken)
 
 			// 链接管理（v2 优先迁移核心能力：创建/列表）
-			protected.POST("/links", m.LinkHandler.CreateLink)
-			protected.GET("/links", m.LinkHandler.GetLinks)
-			protected.GET("/links/search", m.LinkHandler.SearchLinks)
-			protected.DELETE("/links/:code", m.LinkHandler.DeleteLink)
+			protected.POST("/links", v2mw.RequirePermission(m.PermissionService, "link:create"), m.LinkHandler.CreateLink)
+			protected.GET("/links", v2mw.RequirePermission(m.PermissionService, "link:list"), m.LinkHandler.GetLinks)
+			protected.GET("/links/search", v2mw.RequirePermission(m.PermissionService, "link:view"), m.LinkHandler.SearchLinks)
+			protected.DELETE("/links/:code", v2mw.RequirePermission(m.PermissionService, "link:delete"), m.LinkHandler.DeleteLink)
 
 			// 统计
-			protected.GET("/stats", m.StatsHandler.GetStats)
+			protected.GET("/stats", v2mw.RequirePermission(m.PermissionService, "stats:view"), m.StatsHandler.GetStats)
 		}
 	}
 }
