@@ -12,6 +12,7 @@ import (
 	"time"
 
 	appcfg "short-link/internal/config"
+	"short-link/internal/jobs"
 	"short-link/internal/repo"
 	"short-link/internal/service"
 	"short-link/models"
@@ -27,10 +28,11 @@ type LinkHandler struct {
 	domainRepo  *repo.DomainRepo
 	searchService *service.SearchService
 	auditLogRepo *repo.AuditLogRepo
+	meiliWorker *jobs.MeiliWorker
 }
 
 // NewLinkHandler 创建 LinkHandler
-func NewLinkHandler(cfg *appcfg.Config, linkService *service.LinkService, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, searchService *service.SearchService, auditLogRepo *repo.AuditLogRepo) *LinkHandler {
+func NewLinkHandler(cfg *appcfg.Config, linkService *service.LinkService, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, searchService *service.SearchService, auditLogRepo *repo.AuditLogRepo, meiliWorker *jobs.MeiliWorker) *LinkHandler {
 	return &LinkHandler{
 		cfg:           cfg,
 		linkService:   linkService,
@@ -38,6 +40,7 @@ func NewLinkHandler(cfg *appcfg.Config, linkService *service.LinkService, linkRe
 		domainRepo:    domainRepo,
 		searchService: searchService,
 		auditLogRepo:  auditLogRepo,
+		meiliWorker:   meiliWorker,
 	}
 }
 
@@ -204,6 +207,11 @@ func (h *LinkHandler) DeleteLink(c *gin.Context) {
 	if err := h.linkRepo.DeleteUserLink(ctx, userID, target.DomainID, code); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除链接失败: " + err.Error()})
 		return
+	}
+
+	// 异步提交 Meilisearch 删除任务（非阻塞）
+	if h.meiliWorker != nil {
+		h.meiliWorker.Submit("delete", nil, target.ID)
 	}
 
 	// 记录审计日志（敏感操作）

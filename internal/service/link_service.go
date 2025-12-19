@@ -32,6 +32,7 @@ type LinkService struct {
 	userRepo     *repo.UserRepo
 	accessLogRepo *repo.AccessLogRepo
 	statsWorker  *jobs.StatsWorker // 异步统计 worker
+	meiliWorker  *jobs.MeiliWorker // Meilisearch 异步写入 worker
 
 	// env 默认值（DB settings 可覆盖）
 	minCodeLen int
@@ -40,7 +41,7 @@ type LinkService struct {
 }
 
 // NewLinkService 创建 LinkService
-func NewLinkService(baseURL string, minCodeLen int, maxCodeLen int, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, settingsRepo *repo.SettingsRepo, userRepo *repo.UserRepo, accessLogRepo *repo.AccessLogRepo, statsWorker *jobs.StatsWorker) *LinkService {
+func NewLinkService(baseURL string, minCodeLen int, maxCodeLen int, linkRepo *repo.LinkRepo, domainRepo *repo.DomainRepo, settingsRepo *repo.SettingsRepo, userRepo *repo.UserRepo, accessLogRepo *repo.AccessLogRepo, statsWorker *jobs.StatsWorker, meiliWorker *jobs.MeiliWorker) *LinkService {
 	return &LinkService{
 		linkRepo:     linkRepo,
 		domainRepo:   domainRepo,
@@ -48,6 +49,7 @@ func NewLinkService(baseURL string, minCodeLen int, maxCodeLen int, linkRepo *re
 		userRepo:     userRepo,
 		accessLogRepo: accessLogRepo,
 		statsWorker:  statsWorker,
+		meiliWorker:  meiliWorker,
 		minCodeLen:   minCodeLen,
 		maxCodeLen:   maxCodeLen,
 		baseURL:      baseURL,
@@ -366,6 +368,10 @@ func (s *LinkService) CreateLink(ctx context.Context, userID int64, req *models.
 			}
 			return nil, "", fmt.Errorf("创建链接失败: %w", err)
 		}
+		// 异步提交 Meilisearch 索引任务（非阻塞）
+		if s.meiliWorker != nil {
+			s.meiliWorker.Submit("index", link, link.ID)
+		}
 		return link, shortURL, nil
 	}
 
@@ -396,6 +402,10 @@ func (s *LinkService) CreateLink(ctx context.Context, userID int64, req *models.
 		}
 		err := s.linkRepo.CreateLink(ctx, link)
 		if err == nil {
+			// 异步提交 Meilisearch 索引任务（非阻塞）
+			if s.meiliWorker != nil {
+				s.meiliWorker.Submit("index", link, link.ID)
+			}
 			return link, shortURL, nil
 		}
 		if repo.IsUniqueViolation(err) {
@@ -421,6 +431,11 @@ func (s *LinkService) GetStats(ctx context.Context) (*models.LinkStats, error) {
 		return nil, fmt.Errorf("link repo 未初始化")
 	}
 	return s.linkRepo.GetLinkStats(ctx)
+}
+
+// GetMeiliWorker 获取 Meilisearch Worker（用于启动/停止）
+func (s *LinkService) GetMeiliWorker() *jobs.MeiliWorker {
+	return s.meiliWorker
 }
 
 

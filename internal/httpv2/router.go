@@ -72,9 +72,17 @@ func New() (*Module, error) {
 	// 初始化异步统计 Worker（批量大小50，等待间隔2秒）
 	statsWorker := jobs.NewStatsWorker(linkRepo, accessLogRepo, 50, 2*time.Second)
 
+	// 初始化 Meilisearch Worker（最大重试3次，重试间隔5秒）
+	var meiliWorker *jobs.MeiliWorker
+	meiliWorker, err = jobs.NewMeiliWorker(cfg, 3, 5*time.Second)
+	if err != nil {
+		utils.LogWarn("Meilisearch Worker 初始化失败，索引写入将不可用: %v", err)
+		meiliWorker = nil
+	}
+
 	userService := service.NewUserService(userRepo)
 	permissionService := service.NewPermissionService(permissionRepo)
-	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo, accessLogRepo, statsWorker)
+	linkService := service.NewLinkService(cfg.BaseURL, cfg.MinCodeLength, cfg.MaxCodeLength, linkRepo, domainRepo, settingsRepo, userRepo, accessLogRepo, statsWorker, meiliWorker)
 	searchService, err := service.NewSearchService(cfg)
 	if err != nil {
 		utils.LogWarn("Meilisearch(v2) 初始化失败，搜索功能将不可用: %v", err)
@@ -82,7 +90,7 @@ func New() (*Module, error) {
 	}
 
 	authHandler := handlers.NewAuthHandler(cfg, userService, auditLogRepo)
-	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo, searchService, auditLogRepo)
+	linkHandler := handlers.NewLinkHandler(cfg, linkService, linkRepo, domainRepo, searchService, auditLogRepo, meiliWorker)
 	redirectHandler := handlers.NewRedirectHandler(linkService)
 	statsHandler := handlers.NewStatsHandler(linkService)
 
@@ -111,6 +119,9 @@ func (m *Module) Close() {
 	if m != nil {
 		if m.StatsWorker != nil {
 			m.StatsWorker.Stop()
+		}
+		if m.LinkService != nil && m.LinkService.GetMeiliWorker() != nil {
+			m.LinkService.GetMeiliWorker().Stop()
 		}
 		if m.Pool != nil {
 			m.Pool.Close()

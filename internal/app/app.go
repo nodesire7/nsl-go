@@ -82,6 +82,10 @@ func Run() error {
 		if v2.StatsWorker != nil {
 			v2.StatsWorker.Start()
 		}
+		// 启动 Meilisearch Worker
+		if v2.LinkService != nil && v2.LinkService.GetMeiliWorker() != nil {
+			v2.LinkService.GetMeiliWorker().Start()
+		}
 		httpv2.RegisterRoutes(router, v2)
 	}
 
