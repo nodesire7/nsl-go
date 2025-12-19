@@ -12,6 +12,7 @@ import (
 
 	"short-link/internal/repo"
 	"short-link/internal/service"
+	"short-link/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,7 +38,7 @@ func (h *RedirectHandler) Redirect(c *gin.Context) {
 		ctx,
 		c.Request.Host,
 		code,
-		c.ClientIP(),
+		utils.GetRealIP(c.Request),
 		c.GetHeader("User-Agent"),
 		c.GetHeader("Referer"),
 	)

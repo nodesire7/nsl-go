@@ -7,6 +7,7 @@ package middleware
 import (
 	"net/http"
 	"short-link/cache"
+	"short-link/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,8 @@ func RateLimitMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 如果Redis可用，使用分布式限流
 		if cache.RedisClient != nil {
-			key := "rate_limit:" + c.ClientIP()
+			realIP := utils.GetRealIP(c.Request)
+			key := "rate_limit:" + realIP
 			count, err := cache.RedisClient.Incr(cache.Ctx, key).Result()
 			if err == nil {
 				if count == 1 {

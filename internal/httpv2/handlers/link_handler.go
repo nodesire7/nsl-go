@@ -223,7 +223,7 @@ func (h *LinkHandler) DeleteLink(c *gin.Context) {
 			Action:       "link.delete",
 			ResourceType: "link",
 			ResourceID:   &linkID,
-			IP:           c.ClientIP(),
+			IP:           utils.GetRealIP(c.Request),
 			UserAgent:    c.GetHeader("User-Agent"),
 			Details: map[string]interface{}{
 				"code":      code,

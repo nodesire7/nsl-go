@@ -174,7 +174,7 @@ func (h *AuthHandler) UpdateToken(c *gin.Context) {
 			Action:       "token.rotate",
 			ResourceType: "user",
 			ResourceID:   &userID,
-			IP:           c.ClientIP(),
+			IP:           utils.GetRealIP(c.Request),
 			UserAgent:    c.GetHeader("User-Agent"),
 			Details: map[string]interface{}{
 				"role": role,

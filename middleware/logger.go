@@ -22,7 +22,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 		
 		latency := time.Since(start)
 		status := c.Writer.Status()
-		clientIP := c.ClientIP()
+		clientIP := utils.GetRealIP(c.Request)
 		
 		utils.LogInfo("[%s] %s %s %d %v %s",
 			method,
