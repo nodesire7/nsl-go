@@ -191,6 +191,17 @@ curl -X POST http://localhost:9110/api/v2/profile/token \
   -H "X-CSRF-Token: YOUR_CSRF_TOKEN"
 ```
 
+**响应**（包含新的 API Token）：
+```json
+{
+  "success": true,
+  "api_token": "nsl_yyyyyyyyyyyy",
+  "message": "Token已更新，旧Token已失效"
+}
+```
+
+> ⚠️ **注意**：更新 Token 后，旧 Token 立即失效，请保存新的 Token。
+
 ### 创建短链接
 
 ```bash
@@ -243,9 +254,45 @@ curl -X DELETE "http://localhost:9110/api/v2/links/custom" \
 
 ### 获取统计信息
 
+**基础统计**：
 ```bash
 curl -X GET "http://localhost:9110/api/v2/stats" \
   -H "Authorization: Bearer nsl_xxxxxxxxxxxxx"
+```
+
+**聚合统计**（日/周/月、来源、UA 等维度）：
+```bash
+curl -X GET "http://localhost:9110/api/v2/stats/aggregated?days=30&weeks=12&months=12&limit=10" \
+  -H "Authorization: Bearer nsl_xxxxxxxxxxxxx"
+```
+
+**响应示例**：
+```json
+{
+  "total_links": 100,
+  "total_clicks": 5000,
+  "today_clicks": 50,
+  "daily_stats": [
+    {"date": "2025-01-15", "click_count": 50},
+    {"date": "2025-01-14", "click_count": 45}
+  ],
+  "weekly_stats": [
+    {"week": "2025-W03", "click_count": 300}
+  ],
+  "monthly_stats": [
+    {"month": "2025-01", "click_count": 1200}
+  ],
+  "top_referers": [
+    {"referer": "https://example.com", "click_count": 100}
+  ],
+  "top_user_agents": [
+    {"user_agent": "Mozilla/5.0...", "click_count": 200}
+  ],
+  "top_ips": [
+    {"ip": "192.168.1.1", "click_count": 50}
+  ],
+  "top_links": [...]
+}
 ```
 
 ## ✅ redo.md 完成度对照（当前仓库状态）
