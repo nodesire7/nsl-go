@@ -178,14 +178,14 @@ nsl-go/
 
 1) **先定安全与配置**：JWT_SECRET、token hash、移除超级通行证、审计日志
    - ✅ JWT_SECRET、token hash、移除超级通行证
-   - ❌ 审计日志（管理员操作、敏感操作记录）
+   - ✅ 审计日志（管理员操作、敏感操作记录）
 
 2) **重写数据层**：pgxpool + 迁移版本化（migrate）
    - ✅ 已完成
 
 3) **重写鉴权与RBAC**：web cookie + csrf / api token hash
    - ✅ web cookie + csrf / api token hash
-   - ❌ RBAC 权限点（目前仅角色字段，缺少细粒度权限点）
+   - ✅ RBAC 权限点（细粒度权限点：link:create, link:delete, link:view, link:list, stats:view 等）
 
 4) **重写短码生成与幂等**：并发安全 + DB 冲突重试
    - ✅ 已完成
@@ -194,10 +194,17 @@ nsl-go/
    - ✅ 已完成
 
 6) **补齐测试与CI**：单测/集成测/安全扫描
-   - ❌ 集成测试（PG/Redis/Meili）
-   - ❌ `golangci-lint` / `gosec` 在 CI 中落地
-   - ❌ Metrics（Prometheus）
-   - ❌ Tracing
+   - ✅ 集成测试（PG/Redis 使用 testcontainers）
+   - ✅ `golangci-lint` / `gosec` 在 CI 中落地
+   - ✅ Metrics（Prometheus）
+   - ✅ Tracing（OpenTelemetry + Jaeger）
+
+7) **其他优化**：
+   - ✅ 限流策略优化（滑动窗口 + 令牌桶）
+   - ✅ 代理链路真实 IP 处理
+   - ✅ 聚合统计扩展（日/周/月、来源、UA 等维度）
+   - ✅ Meilisearch 写入失败补偿/重试
+   - ✅ 结构化日志统一
 
 ---
 
