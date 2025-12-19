@@ -1,6 +1,7 @@
 /**
  * OpenTelemetry Tracing
  * 实现 redo.md 3.1：分布式追踪
+ * 使用 OTLP HTTP exporter（替代已弃用的 Jaeger exporter）
  */
 package tracing
 
@@ -10,7 +11,7 @@ import (
 	icfg "short-link/internal/config"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
@@ -24,15 +25,20 @@ var (
 
 // InitTracing 初始化 OpenTelemetry Tracing
 func InitTracing(cfg *icfg.Config) (func(), error) {
-	// 如果未配置 Jaeger，则不启用追踪
+	// 如果未配置 Jaeger endpoint，则不启用追踪
 	if cfg.JaegerEndpoint == "" {
 		return func() {}, nil
 	}
 
-	// 创建 Jaeger exporter
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(cfg.JaegerEndpoint)))
+	// 创建 OTLP HTTP exporter（替代已弃用的 Jaeger exporter）
+	// Jaeger 现在支持 OTLP，所以我们可以使用 OTLP exporter
+	ctx := context.Background()
+	exp, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint(cfg.JaegerEndpoint),
+		otlptracehttp.WithInsecure(), // 如果使用 HTTPS，请移除此选项并配置 TLS
+	)
 	if err != nil {
-		return nil, fmt.Errorf("创建 Jaeger exporter 失败: %w", err)
+		return nil, fmt.Errorf("创建 OTLP exporter 失败: %w", err)
 	}
 
 	// 创建 resource

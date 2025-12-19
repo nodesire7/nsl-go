@@ -36,7 +36,11 @@ func Run() error {
 	if err := cache.InitRedis(); err != nil {
 		utils.LogWarn("Redis初始化失败，缓存功能将不可用: %v", err)
 	}
-	defer cache.CloseRedis()
+	defer func() {
+		if err := cache.CloseRedis(); err != nil {
+			utils.LogWarn("关闭Redis连接失败: %v", err)
+		}
+	}()
 	
 	// 初始化限流器（滑动窗口 + 令牌桶）
 	middleware.InitRateLimiters()
@@ -48,7 +52,7 @@ func Run() error {
 	} else {
 		defer cleanupTracing()
 		if cfg.JaegerEndpoint != "" {
-			utils.LogInfo("Tracing 已启用（Jaeger: %s）", cfg.JaegerEndpoint)
+			utils.LogInfo("Tracing 已启用（OTLP: %s）", cfg.JaegerEndpoint)
 		}
 	}
 

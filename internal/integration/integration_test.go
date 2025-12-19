@@ -42,12 +42,12 @@ func setupTestDB(ctx context.Context) (*db.Pool, func(), error) {
 	// 获取容器的主机和端口
 	host, err := pgContainer.Host(ctx)
 	if err != nil {
-		_ = pgContainer.Terminate(ctx)
+		_ = pgContainer.Terminate(ctx) //nolint:errcheck
 		return nil, nil, err
 	}
 	port, err := pgContainer.MappedPort(ctx, "5432")
 	if err != nil {
-		_ = pgContainer.Terminate(ctx)
+		_ = pgContainer.Terminate(ctx) //nolint:errcheck
 		return nil, nil, err
 	}
 
@@ -63,20 +63,20 @@ func setupTestDB(ctx context.Context) (*db.Pool, func(), error) {
 	}
 	pool, err := db.New(ctx, cfg)
 	if err != nil {
-		_ = pgContainer.Terminate(ctx)
+		_ = pgContainer.Terminate(ctx) //nolint:errcheck
 		return nil, nil, err
 	}
 
 	// 执行迁移
 	if err := db.Migrate(ctx, pool); err != nil {
 		pool.Close()
-		_ = pgContainer.Terminate(ctx)
+		_ = pgContainer.Terminate(ctx) //nolint:errcheck
 		return nil, nil, err
 	}
 
 	cleanup := func() {
 		pool.Close()
-		_ = pgContainer.Terminate(ctx)
+		_ = pgContainer.Terminate(ctx) //nolint:errcheck
 	}
 
 	return pool, cleanup, nil
@@ -96,12 +96,12 @@ func setupTestRedis(ctx context.Context) (string, func(), error) {
 
 	endpoint, err := redisContainer.Endpoint(ctx, "")
 	if err != nil {
-		_ = redisContainer.Terminate(ctx)
+		_ = redisContainer.Terminate(ctx) //nolint:errcheck
 		return "", nil, err
 	}
 
 	cleanup := func() {
-		_ = redisContainer.Terminate(ctx)
+		_ = redisContainer.Terminate(ctx) //nolint:errcheck
 	}
 
 	return endpoint, cleanup, nil
